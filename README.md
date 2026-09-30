@@ -4,7 +4,7 @@
 | Module | What it does |
 |---|---|
 | **Authentication** | Sign up, sign in, forgot password, and logout with confirmation |
-| **Home** | Market overview (S&P 500, Nasdaq, Dow), top movers, and a watchlist preview |
+| **Home** | Market overview (S&P 500), top movers, and a watchlist preview |
 | **Search** | Search by ticker or company name, with recent searches |
 | **Stock Detail** | Price, interactive chart (1D/1W/1M/1Y), and key statistics |
 | **Watchlist** | Save and track the stocks you care about |
