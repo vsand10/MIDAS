@@ -1,0 +1,92 @@
+### === Environment & Secrets (React + FastAPI + AI API keys) === ###
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+### === Python / FastAPI Backend === ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Alembic migrations are tracked on purpose — do NOT ignore alembic/versions/
+
+### === Node / React Frontend === ###
+node_modules/
+frontend/node_modules/
+dist/
+build/
+frontend/dist/
+frontend/build/
+.cache/
+.parcel-cache/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+### === Database (PostgreSQL via Docker) === ###
+# Local Postgres data volume if bind-mounted instead of a named Docker volume
+pgdata/
+postgres_data/
+*.sql.bak
+*.dump
+
+### === Docker === ###
+*.pid
+docker-compose.override.yml
+
+### === IDE / Editor === ###
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+### === OS Files === ###
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+### === Logs === ###
+*.log
+logs/
