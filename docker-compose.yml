@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16
+    container_name: midas-db
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: midas-backend
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ./backend:/app
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
