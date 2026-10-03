@@ -1,2 +1,6 @@
+# Ruff settings used to check the MIDAS backend code
+
+# Ruff linting configuration for MIDAS backend
 [tool.ruff.lint]
+# Ignore EXE002 because Docker on Windows may mark Python files as executable
 ignore = ["EXE002"]

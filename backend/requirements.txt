@@ -1,6 +1,14 @@
+# Python packages needed to run the MIDAS backend
+
+# FastAPI framework for building MIDAS backend API
 fastapi
+# Runs FastAPI application server
 uvicorn[standard]
+# Used to connect Python models and queries to the database
 sqlalchemy
+# PostgreSQL database driver for Python
 psycopg2-binary
+# Loads environment variables from .env file
 python-dotenv
+# Checks Python code to finds code issues
 ruff
