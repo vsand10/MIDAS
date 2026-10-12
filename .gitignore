@@ -72,6 +72,23 @@ postgres_data/
 *.pid
 docker-compose.override.yml
 
+### === Firebase / Google Cloud === ###
+# Service account keys and credentials - NEVER commit
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+google-credentials*.json
+application_default_credentials.json
+.gcloud/
+
+# Firebase local tooling
+.firebase/
+firebase-debug.log*
+firestore-debug.log
+ui-debug.log
+.runtimeconfig.json
+firebase-export-*/
+emulator-data/
+
 ### === IDE / Editor === ###
 .vscode/
 .idea/
