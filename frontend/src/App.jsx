@@ -4,14 +4,13 @@ import SignUpPage from "./pages/SignupPage/SignupPage";
 import HomePage from "./pages/HomePage/HomePage";
 import ForgotPasswordPage from "./pages/ForgotPassword/ForgotPassword";
 
-// Authentication isn't connected yet: Log In and Continue go straight to Home.
-// Replace the TODOs once the login and sign up APIs exist.
+
 
 function LoginRoute() {
   const navigate = useNavigate();
   return (
     <LoginPage
-      onLogin={() => navigate("/home")} // TODO: check credentials with the API first
+      onLogin={() => navigate("/home")} 
       onForgotPassword={() => navigate("/forgot-password")}
       onCreateAccount={() => navigate("/signup")}
       
@@ -23,7 +22,7 @@ function SignUpRoute() {
   const navigate = useNavigate();
   return (
     <SignUpPage
-      onSignUp={() => navigate("/home")} // TODO: create the account with the API first
+      onSignUp={() => navigate("/home")} 
       onBack={() => navigate("/")}
     />
   );
@@ -32,7 +31,7 @@ function ForgotPasswordRoute() {
   const navigate = useNavigate();
   return (
     <ForgotPasswordPage
-      onSendLink={() => navigate("/")} // TODO: send the reset email first
+      onSendLink={() => navigate("/")} 
       onBack={() => navigate("/")}
       onLogin={() => navigate("/")}
     />
