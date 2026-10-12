@@ -1,13 +1,7 @@
 import { useState } from "react";
 import "./SignUpPage.css";
 
-/**
- * MIDAS – Sign Up screen (UI only, not connected to the backend yet)
- *
- * Props:
- *  - onSignUp({ firstName, lastName, email, password })
- *  - onBack()
- */
+
 const EMPTY = { firstName: "", lastName: "", email: "", password: "" };
 const MIN_PASSWORD = 8;
 
@@ -15,7 +9,6 @@ export default function SignUpPage({ onSignUp, onBack }) {
   const [form, setForm] = useState(EMPTY);
   const [emailError, setEmailError] = useState("");
 
-  // Continue stays disabled until every required field is filled
   const allFilled =
     form.firstName.trim() && form.lastName.trim() && form.email.trim() && form.password;
   const passwordTooShort = form.password.length > 0 && form.password.length < MIN_PASSWORD;
