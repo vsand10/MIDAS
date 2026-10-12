@@ -1,14 +1,7 @@
 import { useState } from "react";
 import "./ForgotPassword.css";
 
-/**
- * MIDAS – Forgot Password screen (UI only, no reset logic yet)
- *
- * Props:
- *  - onSendLink(email)   called when "Send Reset Link" is tapped
- *  - onBack()            back arrow
- *  - onLogin()           "Log in" link at the bottom
- */
+
 export default function ForgotPasswordPage({ onSendLink, onBack, onLogin }) {
   const [email, setEmail] = useState("");
 
