@@ -1,6 +1,5 @@
 import { useState } from "react";
-import "./SignUpPage.css";
-
+import "./SignupPage.css";
 
 const EMPTY = { firstName: "", lastName: "", email: "", password: "" };
 const MIN_PASSWORD = 8;
@@ -8,6 +7,8 @@ const MIN_PASSWORD = 8;
 export default function SignUpPage({ onSignUp, onBack }) {
   const [form, setForm] = useState(EMPTY);
   const [emailError, setEmailError] = useState("");
+  const [formError, setFormError] = useState("");      // NEW
+  const [submitting, setSubmitting] = useState(false); // NEW
 
   const allFilled =
     form.firstName.trim() && form.lastName.trim() && form.email.trim() && form.password;
@@ -19,21 +20,31 @@ export default function SignUpPage({ onSignUp, onBack }) {
     if (field === "email") setEmailError("");
   };
 
-  const handleSubmit = (e) => {
+  // CHANGED: async, awaits onSignUp, shows errors thrown by signUp()
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || submitting) return;
 
     if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) {
       setEmailError("Please enter a valid email address.");
       return;
     }
 
-    onSignUp?.({
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      email: form.email.trim(),
-      password: form.password,
-    });
+    setFormError("");
+    setSubmitting(true);
+    try {
+      await onSignUp?.({
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
+    } catch (err) {
+      if (err.field === "email") setEmailError(err.message);
+      else setFormError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -59,9 +70,12 @@ export default function SignUpPage({ onSignUp, onBack }) {
             value={form.password} onChange={update("password")}
             hint={`At least ${MIN_PASSWORD} characters`} hintIsError={passwordTooShort} />
 
-          <button type="submit" className="signup__btn" disabled={!canSubmit}>
-            Continue
+          {/* CHANGED: disabled while submitting */}
+          <button type="submit" className="signup__btn" disabled={!canSubmit || submitting}>
+            {submitting ? "Creating account..." : "Continue"}
           </button>
+          {/* NEW: general error (this class already exists in SignUpPage.css) */}
+          {formError && <p className="signup__error" role="alert">{formError}</p>}
         </form>
       </div>
     </main>
