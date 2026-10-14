@@ -1,13 +1,35 @@
 import { useState } from "react";
 import "./ForgotPassword.css";
 
-
 export default function ForgotPasswordPage({ onSendLink, onBack, onLogin }) {
   const [email, setEmail] = useState("");
+  const [error, setError] = useState("");              // NEW
+  const [sent, setSent] = useState(false);             // NEW
+  const [submitting, setSubmitting] = useState(false); // NEW
 
-  const handleSubmit = (e) => {
+  // CHANGED: async, validates, awaits onSendLink, shows the result
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSendLink?.(email.trim());
+    if (submitting) return;
+
+    const trimmed = email.trim();
+    if (!/^\S+@\S+\.\S+$/.test(trimmed)) {
+      setSent(false);
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    setError("");
+    setSent(false);
+    setSubmitting(true);
+    try {
+      await onSendLink?.(trimmed);
+      setSent(true);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -48,11 +70,25 @@ export default function ForgotPasswordPage({ onSendLink, onBack, onLogin }) {
             autoComplete="email"
             placeholder="johndoe@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setError("");
+              setSent(false);
+            }}
+            aria-invalid={!!error}
           />
 
-          <button type="submit" className="forgot__btn" disabled={!email.trim()}>
-            Send Reset Link
+          {/* NEW: error and confirmation messages */}
+          {error && <p className="forgot__error" role="alert">{error}</p>}
+          {sent && (
+            <p className="forgot__success" role="status">
+              If an account exists for that email, we&apos;ve sent a reset link. Check your
+              inbox and your spam folder.
+            </p>
+          )}
+
+          <button type="submit" className="forgot__btn" disabled={!email.trim() || submitting}>
+            {submitting ? "Sending..." : sent ? "Resend Link" : "Send Reset Link"}
           </button>
         </form>
 

@@ -14,11 +14,17 @@ export default function LoginPage({ onLogin, onForgotPassword, onCreateAccount})
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
- 
-    if (!email.trim() || !password) {
-      setError("Please enter your email and password.");
+
+    if (!email.trim()) {
+      setError("Please enter your email.");
       return;
     }
+
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setError("Please enter a valid email address.");
       return;
