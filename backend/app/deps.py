@@ -2,11 +2,11 @@
 
 import os
 
-from google.auth.credentials import AnonymousCredentials
 import firebase_admin
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth, credentials
+from google.auth.credentials import AnonymousCredentials
 
 bearer = HTTPBearer(auto_error=False)
 
@@ -48,5 +48,12 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Missing authentication token")
     try:
         return auth.verify_id_token(creds.credentials)
-    except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except auth.CertificateFetchError:
+        raise HTTPException(
+            status_code=503, detail="Could not reach Google to verify login"
+        ) from None
+    except (ValueError, auth.InvalidIdTokenError):
+        # InvalidIdTokenError also covers expired and revoked tokens
+        raise HTTPException(
+            status_code=401, detail="Invalid or expired token"
+        ) from None

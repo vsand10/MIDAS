@@ -1,8 +1,9 @@
 # Main FastAPI file for starting the MIDAS backend and connecting API routes
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends
-from app.deps import init_firebase, get_current_user
+from fastapi import Depends, FastAPI
+
+from app.deps import get_current_user, init_firebase
 
 load_dotenv()
 init_firebase()
