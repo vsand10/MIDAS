@@ -4,3 +4,8 @@
 [tool.ruff.lint]
 # Ignore EXE002 because Docker on Windows may mark Python files as executable
 ignore = ["EXE002"]
+
+# FastAPI routes use Depends(...) as a parameter default by design. Without this,
+# Ruff's B008 rule flags every protected route, so treat Depends as safe.
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends"]
