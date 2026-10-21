@@ -1,0 +1,38 @@
+.home__header {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  margin-bottom: 8px;
+}
+
+.home__brand {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--midas-gold);
+}
+
+.home__market {
+  padding: 16px 14px 12px;
+}
+
+.home__market-header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+  min-height: 74px;
+}
+
+.home__market-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--midas-muted);
+}
+
+.home__market-value {
+  margin: 2px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
