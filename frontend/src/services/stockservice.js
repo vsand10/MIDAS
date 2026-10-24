@@ -12,6 +12,7 @@
  */
 
 const USE_MOCK_DATA = true;
+const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
 
 // ------------------------------------------------------------------
@@ -83,10 +84,46 @@ export async function getTopMovers(limit = 4) {
 
 /** Search screen. Returns StockSummary[] matching the text and sector chip */
 export async function searchStocks(query = "", sector = "All") {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_SEARCH) {
     // TODO (real API):
     // return getJson(`/stocks/search?q=${encodeURIComponent(query)}&sector=${sector}`);
+    const stocks = await getJson(
+    `/stocks/search?q=${encodeURIComponent(query)}&sector=${sector}`
+  );
+
+  // If there are no results, return an empty list
+  if (!stocks.length) {
+    return [];
   }
+
+  // Get realtime prices for all search results in one API call
+  const symbols = stocks.map((stock) => stock.symbol).join(",");
+
+  const quotes = await getJson(
+    `/stocks/quotes?symbols=${encodeURIComponent(symbols)}`
+  );
+
+  // Combine company information with realtime price information
+  return stocks
+  .map((stock) => {
+    const quote = quotes.find(
+      (q) => q.symbol === stock.symbol
+    );
+
+    if (!quote) {
+      return null;
+    }
+
+    return {
+      ...stock,
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent,
+    };
+  })
+  .filter(Boolean);
+  }
+  
   await wait(150);
   const q = query.trim().toLowerCase();
   return Object.values(MOCK_STOCKS)
@@ -195,12 +232,47 @@ export async function getAlerts(limit = 10) {
 const RECENT_KEY = "midas_recent_searches";
 
 /** Returns StockSummary[] for the last few stocks the user opened from Search */
-export async function getRecentSearches(limit = 5) {
+export async function getRecentSearches(limit = 10) {
   const symbols = readRecent().slice(0, limit);
   if (!symbols.length) return [];
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_SEARCH) {
     // TODO (real API): fetch quotes for these symbols, e.g.
     // return getJson(`/stocks/quotes?symbols=${symbols.join(",")}`);
+    const stockInfo = await Promise.all(
+      symbols.map(async (symbol) => {
+        const matches = await getJson(
+          `/stocks/search?q=${encodeURIComponent(symbol)}&sector=All`
+        );
+
+        return (
+          matches.find(
+            (stock) =>
+              stock.symbol?.toUpperCase() === symbol.toUpperCase()
+          ) || null
+        );
+      })
+    );
+
+    // Get realtime prices and percent changes
+    const quotes = await getJson(
+      `/stocks/quotes?symbols=${encodeURIComponent(symbols.join(","))}`
+    );
+
+    // Combine stock information with realtime quote information
+    return stockInfo
+      .filter(Boolean)
+      .map((stock) => {
+        const quote = quotes.find(
+          (q) => q.symbol === stock.symbol
+        );
+
+        return {
+          ...stock,
+          price: quote?.price ?? null,
+          change: quote?.change ?? null,
+          changePercent: quote?.changePercent ?? null,
+        };
+      });
   }
   await wait(100);
   return symbols.map((s) => MOCK_STOCKS[s]).filter(Boolean).map(toSummary);
