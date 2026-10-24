@@ -238,41 +238,76 @@ export async function getRecentSearches(limit = 10) {
   if (USE_REAL_SEARCH) {
     // TODO (real API): fetch quotes for these symbols, e.g.
     // return getJson(`/stocks/quotes?symbols=${symbols.join(",")}`);
-    const stockInfo = await Promise.all(
-      symbols.map(async (symbol) => {
-        const matches = await getJson(
-          `/stocks/search?q=${encodeURIComponent(symbol)}&sector=All`
-        );
+    const cacheKey = "midas_recent_search_info";
 
-        return (
-          matches.find(
-            (stock) =>
-              stock.symbol?.toUpperCase() === symbol.toUpperCase()
-          ) || null
-        );
-      })
+let infoCache = {};
+
+try {
+  infoCache = JSON.parse(localStorage.getItem(cacheKey)) || {};
+} catch {
+  infoCache = {};
+}
+
+// Start the price request immediately
+const quotesPromise = getJson(
+  `/stocks/quotes?symbols=${encodeURIComponent(symbols.join(","))}`
+);
+
+// Only request company information that is not already cached
+const missingSymbols = symbols.filter(
+  (symbol) => !infoCache[symbol]
+);
+
+if (missingSymbols.length) {
+  const results = await Promise.all(
+    missingSymbols.map(async (symbol) => {
+      const matches = await getJson(
+        `/stocks/search?q=${encodeURIComponent(symbol)}&sector=All`
+      );
+
+      return matches.find(
+        (stock) => stock.symbol === symbol
+      );
+    })
+  );
+
+  results.filter(Boolean).forEach((stock) => {
+    infoCache[stock.symbol] = {
+      name: stock.name,
+      sector: stock.sector || "",
+    };
+  });
+
+  try {
+    localStorage.setItem(
+      cacheKey,
+      JSON.stringify(infoCache)
+    );
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+const quotes = await quotesPromise;
+
+return symbols
+  .map((symbol) => {
+    const quote = quotes.find(
+      (q) => q.symbol === symbol
     );
 
-    // Get realtime prices and percent changes
-    const quotes = await getJson(
-      `/stocks/quotes?symbols=${encodeURIComponent(symbols.join(","))}`
-    );
+    if (!quote) return null;
 
-    // Combine stock information with realtime quote information
-    return stockInfo
-      .filter(Boolean)
-      .map((stock) => {
-        const quote = quotes.find(
-          (q) => q.symbol === stock.symbol
-        );
-
-        return {
-          ...stock,
-          price: quote?.price ?? null,
-          change: quote?.change ?? null,
-          changePercent: quote?.changePercent ?? null,
-        };
-      });
+    return {
+      symbol,
+      name: infoCache[symbol]?.name || symbol,
+      sector: infoCache[symbol]?.sector || "",
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent,
+    };
+  })
+  .filter(Boolean);
   }
   await wait(100);
   return symbols.map((s) => MOCK_STOCKS[s]).filter(Boolean).map(toSummary);
