@@ -10,9 +10,11 @@
  *   3. Return data in the same shape as the mock version
  * The pages won't need any changes.
  */
+import { auth } from "../auth/firebase";
 
 const USE_MOCK_DATA = true;
 const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
+const USE_REAL_WATCHLIST = true;
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
 
 // ------------------------------------------------------------------
@@ -176,24 +178,63 @@ export async function getPriceHistory(symbol, range = "1D") {
 
 /** "My Watchlist" on Home. Returns StockSummary[] */
 export async function getWatchlist() {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): return getJson(`/watchlist`);
+    const savedStocks = await getJson("/watchlist");
+
+    if (!savedStocks.length) {
+      return [];
+    }
+
+    const symbols = savedStocks
+      .map((stock) => stock.symbol)
+      .join(",");
+
+    const quotes = await getJson(
+      `/stocks/quotes?symbols=${encodeURIComponent(symbols)}`
+    );
+
+    return savedStocks
+      .map((stock) => {
+        const quote = quotes.find(
+          (q) => q.symbol === stock.symbol
+        );
+
+        if (!quote) return null;
+
+        return {
+          ...stock,
+          price: quote.price,
+          change: quote.change,
+          changePercent: quote.changePercent,
+        };
+      })
+      .filter(Boolean);
   }
   await wait();
   return mockWatchlist.map((sym) => toSummary(MOCK_STOCKS[sym])).filter(Boolean);
 }
 
 export async function isInWatchlist(symbol) {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): const list = await getJson(`/watchlist`); return list.some(...)
+    const list = await getJson("/watchlist");
+    const sym = symbol.toUpperCase();
+
+    return list.some((stock) => stock.symbol === sym);
+
   }
   await wait(100);
   return mockWatchlist.includes(symbol.toUpperCase());
 }
 
 export async function addToWatchlist(symbol) {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): return getJson(`/watchlist`, { method: "POST", body: { symbol } });
+    return getJson("/watchlist", {
+      method: "POST",
+      body: { symbol },
+    });
   }
   await wait();
   const sym = symbol.toUpperCase();
@@ -201,8 +242,11 @@ export async function addToWatchlist(symbol) {
 }
 
 export async function removeFromWatchlist(symbol) {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): return getJson(`/watchlist/${symbol}`, { method: "DELETE" });
+    return getJson(`/watchlist/${encodeURIComponent(symbol)}`, {
+      method: "DELETE",
+    });
   }
   await wait();
   mockWatchlist = mockWatchlist.filter((s) => s !== symbol.toUpperCase());
@@ -315,6 +359,14 @@ export class NotFoundError extends Error {}
 // eslint-disable-next-line no-unused-vars
 async function getJson(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" };
+
+  // Send Firebase login token to protected FastAPI endpoints
+  const token = await auth.currentUser?.getIdToken();
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,

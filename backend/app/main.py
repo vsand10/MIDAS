@@ -5,9 +5,16 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 
 from app.deps import get_current_user, init_firebase
+from google.cloud import firestore
+from pydantic import BaseModel
 
 load_dotenv()
 init_firebase()
+
+# Firestore connection for watchlist data
+db = firestore.Client(
+    project=os.getenv("FIREBASE_PROJECT_ID")
+)
 
 # Create the main FastAPI application for MIDAS
 app = FastAPI(title="MIDAS API")
@@ -232,3 +239,154 @@ async def get_stock_quotes(symbols: str):
             status_code=502,
             detail="Could not get stock quotes from Alpha Vantage",
         )    
+
+# ---------------- Watchlist ----------------
+# Watchlist
+@app.get("/api/watchlist")
+def get_watchlist(user: dict = Depends(get_current_user)):
+    uid = user["uid"]
+
+    watchlist_ref = (
+        db.collection("users")
+        .document(uid)
+        .collection("watchlist")
+    )
+
+    docs = watchlist_ref.stream()
+
+    return [
+    {
+        "symbol": doc.id,
+        "name": doc.to_dict().get("name", doc.id),
+        "sector": doc.to_dict().get("sector", ""),
+    }
+    for doc in docs
+]
+
+class WatchlistRequest(BaseModel):
+    symbol: str
+
+# Add a stock to the current user's watchlist
+@app.post("/api/watchlist")
+def add_to_watchlist(
+    request: WatchlistRequest,
+    user: dict = Depends(get_current_user),
+):
+    uid = user["uid"]
+    symbol = request.symbol.strip().upper()
+
+    if not symbol:
+        raise HTTPException(status_code=400, detail="Stock symbol is required")
+
+    api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+
+    # Find the company name
+    name = symbol
+
+    try:
+        response = httpx.get(
+            "https://www.alphavantage.co/query",
+            params={
+                "function": "SYMBOL_SEARCH",
+                "keywords": symbol,
+                "apikey": api_key,
+            },
+            timeout=10.0,
+        )
+
+        data = response.json()
+
+        for match in data.get("bestMatches", []):
+            if match.get("1. symbol", "").upper() == symbol:
+                name = match.get("2. name", symbol)
+                break
+
+    except httpx.HTTPError:
+        pass
+
+    # Find the company's sector
+    sector = ""
+
+    try:
+        response = httpx.get(
+            "https://www.alphavantage.co/query",
+            params={
+                "function": "OVERVIEW",
+                "symbol": symbol,
+                "apikey": api_key,
+            },
+            timeout=10.0,
+        )
+
+        overview = response.json()
+        sector = overview.get("Sector", "")
+
+    except httpx.HTTPError:
+        pass
+
+    user_ref = db.collection("users").document(uid)
+
+    user_ref.set(
+        {
+            "email": user.get("email"),
+        },
+        merge=True,
+    )
+
+    watchlist_ref = user_ref.collection("watchlist").document(symbol)
+
+    watchlist_ref.set(
+        {
+            "symbol": symbol,
+            "name": name,
+            "sector": sector,
+            "addedAt": firestore.SERVER_TIMESTAMP,
+        }
+    )
+
+    return {
+        "symbol": symbol,
+        "name": name,
+        "sector": sector,
+        "added": True,
+    }
+
+
+    # Use the stock symbol as the document ID.
+    # This naturally prevents duplicate stocks.
+    watchlist_ref = user_ref.collection("watchlist").document(symbol)
+
+    watchlist_ref.set(
+        {
+            "symbol": symbol,
+            "addedAt": firestore.SERVER_TIMESTAMP,
+        }
+    )
+
+    return {
+        "symbol": symbol,
+        "added": True,
+    }
+
+# Remove a stock from the current user's watchlist
+@app.delete("/api/watchlist/{symbol}")
+def remove_from_watchlist(
+    symbol: str,
+    user: dict = Depends(get_current_user),
+):
+    uid = user["uid"]
+    sym = symbol.strip().upper()
+
+    watchlist_ref = (
+        db.collection("users")
+        .document(uid)
+        .collection("watchlist")
+        .document(sym)
+    )
+
+    watchlist_ref.delete()
+
+    return {
+        "symbol": sym,
+        "removed": True,
+    }
