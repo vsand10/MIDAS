@@ -1,0 +1,124 @@
+.price-chart {
+  --trend: var(--midas-up, #1f9d55);
+}
+
+.price-chart--down {
+  --trend: var(--midas-down, #d14343);
+}
+
+.price-chart__plot {
+  position: relative;
+}
+
+.price-chart__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  touch-action: pan-y; /* allow page scrolling, capture horizontal drags */
+  cursor: crosshair;
+}
+
+.price-chart__loading {
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+}
+
+.price-chart__line {
+  fill: none;
+  stroke: var(--trend);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.price-chart__fill-start {
+  stop-color: var(--trend);
+  stop-opacity: 0.18;
+}
+
+.price-chart__fill-end {
+  stop-color: var(--trend);
+  stop-opacity: 0;
+}
+
+.price-chart__baseline {
+  stroke: #bdb8ac;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.price-chart__cursor {
+  stroke: #9a958a;
+  stroke-width: 1;
+}
+
+.price-chart__dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--trend);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.price-chart__label {
+  position: absolute;
+  top: -6px;
+  transform: translate(-50%, -100%);
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: #2b2b2b;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-chart__ranges {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.price-chart__range {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--midas-muted, #6b6b6b);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.price-chart__range.is-active {
+  background: var(--midas-blue, #4a71cd);
+  color: #fff;
+}
+
+.price-chart__range:focus-visible {
+  outline: 2px solid var(--midas-gold, #cda64a);
+  outline-offset: 1px;
+}
+
+/* Price + change line (used by Home and Stock Detail headers) */
+.price-change {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-change__label {
+  color: var(--midas-muted);
+  font-weight: 500;
+}
