@@ -22,7 +22,7 @@ export default function SearchPage() {
     () => (isBrowsing ? Promise.resolve([]) : searchStocks(debouncedQuery, sector)),
     [debouncedQuery, sector]
   );
-  const recent = useAsync(() => getRecentSearches(5), []);
+  const recent = useAsync(() => getRecentSearches(10), []);
   const trending = useAsync(() => getTrendingThemes(), []);
 
   const onSelect = (symbol) => addRecentSearch(symbol);
