@@ -1,12 +1,13 @@
 # Main FastAPI file for starting the MIDAS backend and connecting API routes
 import os
+
 import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
-
-from app.deps import get_current_user, init_firebase
 from google.cloud import firestore
 from pydantic import BaseModel
+
+from app.deps import get_current_user, init_firebase
 
 load_dotenv()
 init_firebase()
