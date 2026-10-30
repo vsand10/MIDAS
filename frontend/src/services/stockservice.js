@@ -10,8 +10,11 @@
  *   3. Return data in the same shape as the mock version
  * The pages won't need any changes.
  */
+import { auth } from "../auth/firebase";
 
 const USE_MOCK_DATA = true;
+const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
+const USE_REAL_WATCHLIST = true;
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
 
 // ------------------------------------------------------------------
@@ -83,10 +86,46 @@ export async function getTopMovers(limit = 4) {
 
 /** Search screen. Returns StockSummary[] matching the text and sector chip */
 export async function searchStocks(query = "", sector = "All") {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_SEARCH) {
     // TODO (real API):
     // return getJson(`/stocks/search?q=${encodeURIComponent(query)}&sector=${sector}`);
+    const stocks = await getJson(
+    `/stocks/search?q=${encodeURIComponent(query)}&sector=${sector}`
+  );
+
+  // If there are no results, return an empty list
+  if (!stocks.length) {
+    return [];
   }
+
+  // Get realtime prices for all search results in one API call
+  const symbols = stocks.map((stock) => stock.symbol).join(",");
+
+  const quotes = await getJson(
+    `/stocks/quotes?symbols=${encodeURIComponent(symbols)}`
+  );
+
+  // Combine company information with realtime price information
+  return stocks
+  .map((stock) => {
+    const quote = quotes.find(
+      (q) => q.symbol === stock.symbol
+    );
+
+    if (!quote) {
+      return null;
+    }
+
+    return {
+      ...stock,
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent,
+    };
+  })
+  .filter(Boolean);
+  }
+  
   await wait(150);
   const q = query.trim().toLowerCase();
   return Object.values(MOCK_STOCKS)
@@ -139,24 +178,63 @@ export async function getPriceHistory(symbol, range = "1D") {
 
 /** "My Watchlist" on Home. Returns StockSummary[] */
 export async function getWatchlist() {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): return getJson(`/watchlist`);
+    const savedStocks = await getJson("/watchlist");
+
+    if (!savedStocks.length) {
+      return [];
+    }
+
+    const symbols = savedStocks
+      .map((stock) => stock.symbol)
+      .join(",");
+
+    const quotes = await getJson(
+      `/stocks/quotes?symbols=${encodeURIComponent(symbols)}`
+    );
+
+    return savedStocks
+      .map((stock) => {
+        const quote = quotes.find(
+          (q) => q.symbol === stock.symbol
+        );
+
+        if (!quote) return null;
+
+        return {
+          ...stock,
+          price: quote.price,
+          change: quote.change,
+          changePercent: quote.changePercent,
+        };
+      })
+      .filter(Boolean);
   }
   await wait();
   return mockWatchlist.map((sym) => toSummary(MOCK_STOCKS[sym])).filter(Boolean);
 }
 
 export async function isInWatchlist(symbol) {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): const list = await getJson(`/watchlist`); return list.some(...)
+    const list = await getJson("/watchlist");
+    const sym = symbol.toUpperCase();
+
+    return list.some((stock) => stock.symbol === sym);
+
   }
   await wait(100);
   return mockWatchlist.includes(symbol.toUpperCase());
 }
 
 export async function addToWatchlist(symbol) {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): return getJson(`/watchlist`, { method: "POST", body: { symbol } });
+    return getJson("/watchlist", {
+      method: "POST",
+      body: { symbol },
+    });
   }
   await wait();
   const sym = symbol.toUpperCase();
@@ -164,8 +242,11 @@ export async function addToWatchlist(symbol) {
 }
 
 export async function removeFromWatchlist(symbol) {
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_WATCHLIST) {
     // TODO (real API): return getJson(`/watchlist/${symbol}`, { method: "DELETE" });
+    return getJson(`/watchlist/${encodeURIComponent(symbol)}`, {
+      method: "DELETE",
+    });
   }
   await wait();
   mockWatchlist = mockWatchlist.filter((s) => s !== symbol.toUpperCase());
@@ -195,12 +276,82 @@ export async function getAlerts(limit = 10) {
 const RECENT_KEY = "midas_recent_searches";
 
 /** Returns StockSummary[] for the last few stocks the user opened from Search */
-export async function getRecentSearches(limit = 5) {
+export async function getRecentSearches(limit = 10) {
   const symbols = readRecent().slice(0, limit);
   if (!symbols.length) return [];
-  if (!USE_MOCK_DATA) {
+  if (USE_REAL_SEARCH) {
     // TODO (real API): fetch quotes for these symbols, e.g.
     // return getJson(`/stocks/quotes?symbols=${symbols.join(",")}`);
+    const cacheKey = "midas_recent_search_info";
+
+let infoCache = {};
+
+try {
+  infoCache = JSON.parse(localStorage.getItem(cacheKey)) || {};
+} catch {
+  infoCache = {};
+}
+
+// Start the price request immediately
+const quotesPromise = getJson(
+  `/stocks/quotes?symbols=${encodeURIComponent(symbols.join(","))}`
+);
+
+// Only request company information that is not already cached
+const missingSymbols = symbols.filter(
+  (symbol) => !infoCache[symbol]
+);
+
+if (missingSymbols.length) {
+  const results = await Promise.all(
+    missingSymbols.map(async (symbol) => {
+      const matches = await getJson(
+        `/stocks/search?q=${encodeURIComponent(symbol)}&sector=All`
+      );
+
+      return matches.find(
+        (stock) => stock.symbol === symbol
+      );
+    })
+  );
+
+  results.filter(Boolean).forEach((stock) => {
+    infoCache[stock.symbol] = {
+      name: stock.name,
+      sector: stock.sector || "",
+    };
+  });
+
+  try {
+    localStorage.setItem(
+      cacheKey,
+      JSON.stringify(infoCache)
+    );
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+const quotes = await quotesPromise;
+
+return symbols
+  .map((symbol) => {
+    const quote = quotes.find(
+      (q) => q.symbol === symbol
+    );
+
+    if (!quote) return null;
+
+    return {
+      symbol,
+      name: infoCache[symbol]?.name || symbol,
+      sector: infoCache[symbol]?.sector || "",
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent,
+    };
+  })
+  .filter(Boolean);
   }
   await wait(100);
   return symbols.map((s) => MOCK_STOCKS[s]).filter(Boolean).map(toSummary);
@@ -243,6 +394,14 @@ export class NotFoundError extends Error {}
 // eslint-disable-next-line no-unused-vars
 async function getJson(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" };
+
+  // Send Firebase login token to protected FastAPI endpoints
+  const token = await auth.currentUser?.getIdToken();
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
