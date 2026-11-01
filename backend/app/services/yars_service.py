@@ -1,5 +1,5 @@
-from yars.yars import YARS
 from yars.utils import display_results
+from yars.yars import YARS
 
 miner = YARS()
 
