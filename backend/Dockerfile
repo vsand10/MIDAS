@@ -2,12 +2,20 @@
 
 # Use Python 3.12 as base image
 FROM python:3.12-slim
+
 # Set working folder inside the container
 WORKDIR /app
+
 # Copy Python package list into the container
 COPY requirements.txt .
+
 # Install required Python packages
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Clone YARS repo and init
+COPY vendor/yars /opt/yars
+ENV PYTHONPATH=/opt/yars/src
+
 # Copy backend files into the container
 COPY . .
 # Start FastAPI server on port 8000
