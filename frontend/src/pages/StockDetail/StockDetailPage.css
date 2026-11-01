@@ -1,0 +1,201 @@
+.stock__header {
+  display: flex;
+  flex-direction: column;
+  margin: 6px 0 16px;
+  min-height: 108px;
+}
+
+.stock__name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.stock__meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--midas-muted);
+}
+
+.stock__price {
+  margin: 10px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock__chart {
+  margin-bottom: 20px;
+}
+
+/* ---------- Tabs ---------- */
+.stock__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 -16px 4px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--midas-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.stock__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.stock__tab {
+  flex-shrink: 0;
+  padding: 10px 10px 11px;
+  border: none;
+  border-bottom: 2.5px solid transparent;
+  background: none;
+  color: var(--midas-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stock__tab.is-active {
+  border-bottom-color: var(--midas-blue);
+  color: var(--midas-blue);
+}
+
+.stock__tab:focus-visible {
+  outline: 2px solid var(--midas-gold);
+  outline-offset: -2px;
+}
+
+.stock__section {
+  margin-top: 18px;
+}
+
+.stock__section .section__title {
+  margin-bottom: 10px;
+}
+
+/* ---------- Key stats ---------- */
+.stock__stats {
+  margin: 0;
+  padding: 2px 14px;
+}
+
+.stock__stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  font-size: 14px;
+}
+
+.stock__stat + .stock__stat {
+  border-top: 1px solid var(--midas-border);
+}
+
+.stock__stat dt {
+  color: var(--midas-muted);
+}
+
+.stock__stat dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock__about {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #4a4a4a;
+}
+
+.stock__coming-soon {
+  margin-top: 18px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--midas-muted);
+  font-size: 14px;
+}
+
+.stock__coming-soon p {
+  margin: 0;
+}
+
+/* ---------- Watchlist button ---------- */
+.stock__watch {
+  margin-top: 24px;
+}
+
+.stock__watch-btn {
+  width: 100%;
+}
+
+.stock__watch-error {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--midas-error);
+}
+
+/* ---------- Modal stock card ---------- */
+.stock__modal-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--midas-border);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.stock__logo {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.stock__modal-name,
+.stock__modal-price {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+.stock__modal-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.stock__modal-name span {
+  font-size: 12px;
+  color: var(--midas-muted);
+}
+
+.stock__modal-price {
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock__not-found {
+  padding: 48px 8px;
+  text-align: center;
+}
+
+.stock__not-found h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.stock__not-found p {
+  margin: 0 0 20px;
+  color: var(--midas-muted);
+  font-size: 14px;
+}
