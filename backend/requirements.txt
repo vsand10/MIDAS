@@ -12,3 +12,7 @@ ruff
 firebase-admin
 yfinance
 httpx
+
+requests
+Pygments
+
