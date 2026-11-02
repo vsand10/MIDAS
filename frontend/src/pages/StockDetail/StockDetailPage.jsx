@@ -16,6 +16,7 @@ import {
 } from "../../services/stockservice";
 
 import { formatCompact, formatMoneyCompact, formatPrice } from "../../utils/format";
+import NewsTab from "./NewsTab";
 import "./StockDetailPage.css";
 
 const TABS = ["Overview", "Why it moved", "News", "Sentiment"];
@@ -132,6 +133,8 @@ export default function StockDetailPage() {
       <div role="tabpanel" id={`panel-${slug(tab)}`} aria-labelledby={`tab-${slug(tab)}`}>
         {tab === "Overview" ? (
           <Overview stock={data} />
+        ) : tab === "News" ? (
+          <NewsTab symbol={symbol} />
         ) : (
           <div className="card stock__coming-soon">
             {/* TODO: build the "{tab}" section once its API is ready */}

@@ -12,7 +12,7 @@
  */
 import { auth } from "../auth/firebase";
 
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
 const USE_REAL_WATCHLIST = true;
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
@@ -42,6 +42,9 @@ const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
  *
  * @typedef {{ time: string, price: number }} PricePoint   time = ISO date string
  *
+ * @typedef {{ id: string, title: string, source: string, url: string, publishedAt: string }} NewsArticle
+ *   publishedAt = ISO date string, articles come newest first
+ * 
  * @typedef {Object} TrendingTheme
  * @property {string} theme           "Robotics"
  * @property {string} description
@@ -54,6 +57,7 @@ export const SECTORS = ["All", "Tech", "Energy", "Finance", "Health"];
 // ------------------------------------------------------------------
 // Public functions used by the pages
 // ------------------------------------------------------------------
+
 
 /** S&P 500 card on Home. Returns { name, value, change, changePercent, history: PricePoint[] } */
 export async function getMarketIndex(range = "1D") {
@@ -72,16 +76,39 @@ export async function getMarketIndex(range = "1D") {
   };
 }
 
+
+
+/** Market overview on Home. Returns [{ symbol, name, value, change, changePercent }] for S&P 500, Nasdaq, Dow */
+export async function getMarketOverview() {
+  if (!USE_MOCK_DATA) {
+    const data = await getJson("/market/overview");
+    return data.indices;
+  }
+  await wait();
+  return MOCK_INDICES;
+}
+
+/** Chart on Home for one index ("^GSPC", "^IXIC" or "^DJI"). Returns PricePoint[] oldest to newest */
+export async function getIndexHistory(symbol, range = "1D") {
+  if (!USE_MOCK_DATA) {
+    return getJson(`/market/history?symbol=${encodeURIComponent(symbol)}&range=${range}`);
+  }
+  await wait(200);
+  const index = MOCK_INDICES.find((i) => i.symbol === symbol) ?? MOCK_INDICES[0];
+  return mockHistory(index.symbol, range, index.value, index.value - index.change);
+}
+
 /** "Top Movers Today" on Home. Returns StockSummary[] (biggest % moves first) */
 export async function getTopMovers(limit = 4) {
   if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/market/movers?limit=${limit}`);
-  }
+    return getJson(`/market/movers?limit=${limit}`);  }
   await wait();
-  return Object.values(MOCK_STOCKS)
-    .map(toSummary)
-    .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
-    .slice(0, limit);
+  const stocks = Object.values(MOCK_STOCKS).map(toSummary);
+  const biggestFirst = (a, b) => b.changePercent - a.changePercent;
+  return {
+    gainers: stocks.filter((s) => s.changePercent > 0).sort(biggestFirst).slice(0, limit),
+    losers: stocks.filter((s) => s.changePercent < 0).sort((a, b) => biggestFirst(b, a)).slice(0, limit),
+  };
 }
 
 /** Search screen. Returns StockSummary[] matching the text and sector chip */
@@ -171,6 +198,17 @@ export async function getPriceHistory(symbol, range = "1D") {
   if (!stock) throw new NotFoundError(`No stock found for "${sym}"`);
   return mockHistory(sym, range, stock.price, stock.price - stock.change);
 }
+
+/** News tab on Stock Detail. Returns NewsArticle[] newest first, or [] when there is no news */
+export async function getNews(symbol, limit = 10) {
+  const sym = symbol.toUpperCase();
+  if (!USE_MOCK_DATA) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}/news?limit=${limit}`);
+  }
+  await wait(200);
+  return (MOCK_NEWS[sym] ?? []).slice(0, limit); // only some stocks have sample news
+}
+
 
 // ---------------- Watchlist ----------------
 // Mock version keeps the list in memory. The real version will call the
@@ -484,6 +522,12 @@ const MOCK_THEMES = [
   },
 ];
 
+const MOCK_INDICES = [
+  { symbol: "^GSPC", name: "S&P 500", value: 7638.09, change: -30.92, changePercent: -0.4 },
+  { symbol: "^IXIC", name: "Nasdaq", value: 25214.6, change: 118.35, changePercent: 0.47 },
+  { symbol: "^DJI", name: "Dow", value: 44120.8, change: -62.4, changePercent: -0.14 },
+];
+
 let mockWatchlist = ["AMZN", "NVDA", "AAPL", "TSLA", "MSFT"];
 
 const hoursAgo = (h) => new Date(Date.now() - h * 3600e3).toISOString();
@@ -513,6 +557,20 @@ const MOCK_ALERTS = [
     reason: null,
   },
 ];
+
+const MOCK_NEWS = {
+  AAPL: [
+    { id: "n1", title: "Apple unveils new chip for next-generation laptops", source: "Reuters",
+      url: "https://example.com/aapl-chip", publishedAt: hoursAgo(3) },
+    { id: "n2", title: "Supplier update points to strong iPhone demand", source: "Bloomberg",
+      url: "https://example.com/aapl-supplier", publishedAt: hoursAgo(50) },
+  ],
+  NVDA: [
+    { id: "n3", title: "NVIDIA expands AI data center lineup", source: "CNBC",
+      url: "https://example.com/nvda-ai", publishedAt: hoursAgo(1) },
+  ],
+};
+
 
 /**
  * Fake but repeatable price history that ends at the current price.

@@ -47,3 +47,19 @@ export const formatAlertTime = (iso) => {
 
 /** "up" | "down" | "flat" - used to pick green/red styling */
 export const direction = (n) => (n > 0 ? "up" : n < 0 ? "down" : "flat");
+
+/** News times: "Just now", "5m ago", "3h ago", "2d ago", then "Mar 1" (adds the year if not this year) */
+export const formatRelativeTime = (iso, now = Date.now()) => {
+  const then = new Date(iso);
+  const minutes = Math.floor((now - then.getTime()) / 60000);
+  if (Number.isNaN(minutes) || minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}h ago`;
+  if (minutes < 60 * 24 * 7) return `${Math.floor(minutes / (60 * 24))}d ago`;
+  const sameYear = then.getFullYear() === new Date(now).getFullYear();
+  return then.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+};
