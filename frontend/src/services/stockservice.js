@@ -15,6 +15,7 @@ import { auth } from "../auth/firebase";
 const USE_MOCK_DATA = true;
 const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
 const USE_REAL_WATCHLIST = true;
+const USE_REAL_STOCK_DETAIL = true; // If true, the Stock Detail screen (stats + chart) calls the real API
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
 
 // ------------------------------------------------------------------
@@ -151,8 +152,8 @@ export async function getTrendingThemes() {
 /** Specific Stock screen. Returns StockDetail, or throws NotFoundError */
 export async function getStock(symbol) {
   const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/stocks/${sym}`);
+  if (USE_REAL_STOCK_DETAIL) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}`);
   }
   await wait();
   const stock = MOCK_STOCKS[sym];
@@ -163,8 +164,8 @@ export async function getStock(symbol) {
 /** Price chart. Returns PricePoint[] oldest to newest */
 export async function getPriceHistory(symbol, range = "1D") {
   const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/stocks/${sym}/history?range=${range}`);
+  if (USE_REAL_STOCK_DETAIL) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}/history?range=${range}`);
   }
   await wait(200);
   const stock = MOCK_STOCKS[sym];
