@@ -199,3 +199,10 @@
   color: var(--midas-muted);
   font-size: 14px;
 }
+
+/* ---------- News tab ---------- */
+.stock__news {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

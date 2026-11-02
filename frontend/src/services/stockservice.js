@@ -272,6 +272,15 @@ export async function getAlerts(limit = 10) {
   return MOCK_ALERTS.slice(0, limit);
 }
 
+export async function getNews(symbol, limit = 20) {
+  const sym = symbol.toUpperCase();
+  if (!USE_MOCK_DATA) {
+    return getJson(`/stocks/${sym}/news?limit=${limit}`);
+  }
+  await wait();
+  return mockNews(sym).slice(0, limit);
+}
+
 // ---------------- Recent searches (kept on this device) ----------------
 const RECENT_KEY = "midas_recent_searches";
 
@@ -513,6 +522,32 @@ const MOCK_ALERTS = [
     reason: null,
   },
 ];
+
+function mockNews(symbol) {
+  const stock = MOCK_STOCKS[symbol];
+  if (!stock) return [];
+  const name = stock.name.replace(/ (Inc\.|Corp\.|Corporation|Group|& Co\.)$/, "");
+  const items = [
+    ["TipRanks", `${name} gets a fresh price target after analyst review`, "Somewhat-Bullish", 0.28, 1.5],
+    ["Financial Times", `What investors are watching in ${name}'s next earnings report`, "Neutral", 0.04, 5],
+    ["Nasdaq", `${symbol} stock moves as sector rotates; here's what's driving it`, stock.change >= 0 ? "Bullish" : "Bearish", stock.change >= 0 ? 0.41 : -0.38, 9],
+    ["Nasdaq", `How much a $1,000 investment in ${symbol} five years ago is worth now`, "Neutral", 0.08, 26],
+    ["Reuters", `${name} faces supply questions as demand outlook shifts`, "Somewhat-Bearish", -0.19, 49],
+    ["MarketWatch", `3 things to know about ${name} before the market opens`, "Neutral", 0.02, 74],
+  ];
+  return items.map(([source, title, label, score, hours], i) => ({
+    id: `${symbol}-${i}`,
+    title,
+    url: "https://example.com/sample-article",
+    source,
+    publishedAt: new Date(Date.now() - hours * 3600e3).toISOString(),
+    summary: `Sample summary for this article about ${name}. Real summaries will come from Alpha Vantage once the news API is connected.`,
+    imageUrl: null,
+    sentiment: { label, score },
+    relevance: 0.8,
+    topics: ["Technology"],
+  }));
+}
 
 /**
  * Fake but repeatable price history that ends at the current price.

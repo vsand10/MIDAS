@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import RequireAuth from "./auth/RequireAuth";
 import { signUp, logIn, logOut, resetPassword } from "./auth/authService";
 import WatchlistPage from "./pages/WatchList/WatchListPage";
+import NewsPage from "./pages/News/NewsPage";
 
 function LoginRoute() {
   const navigate = useNavigate();
@@ -97,6 +98,7 @@ export default function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/stock/:symbol" element={<StockDetailPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/stock/:symbol/news" element={<NewsPage />} />
             <Route path="/profile" element={<ProfileRoute />} />
           </Route>
 
