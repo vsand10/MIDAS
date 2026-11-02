@@ -8,6 +8,7 @@ from google.cloud import firestore
 from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
+from app.stock_detail import router as stock_detail_router
 
 load_dotenv()
 init_firebase()
@@ -391,3 +392,5 @@ def remove_from_watchlist(
         "symbol": sym,
         "removed": True,
     }
+
+app.include_router(stock_detail_router)
