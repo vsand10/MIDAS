@@ -10,9 +10,10 @@ python-dotenv
 ruff
 
 firebase-admin
-yfinance
+tzdata
 httpx
+
 
 requests
 Pygments
-
+pytest

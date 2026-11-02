@@ -58,26 +58,6 @@ export const SECTORS = ["All", "Tech", "Energy", "Finance", "Health"];
 // Public functions used by the pages
 // ------------------------------------------------------------------
 
-
-/** S&P 500 card on Home. Returns { name, value, change, changePercent, history: PricePoint[] } */
-export async function getMarketIndex(range = "1D") {
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/market/index/SPX?range=${range}`);
-  }
-  await wait();
-  const value = 7638.09;
-  return {
-    name: "S&P 500",
-    symbol: "SPX",
-    value,
-    change: -30.92,
-    changePercent: -0.4,
-    history: mockHistory("SPX", range, value, value - (-30.92)),
-  };
-}
-
-
-
 /** Market overview on Home. Returns [{ symbol, name, value, change, changePercent }] for S&P 500, Nasdaq, Dow */
 export async function getMarketOverview() {
   if (!USE_MOCK_DATA) {

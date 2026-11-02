@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.deps import get_current_user
 from app.services import news_service
-from app.services.yfinance_utils import DataUnavailableError
+from app.services.alphavantage import DataUnavailableError
 
 # Every route in this file requires a logged-in user
 router = APIRouter(

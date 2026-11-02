@@ -7,8 +7,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from google.cloud import firestore
 from pydantic import BaseModel
 
-from app.routers import news
 from app.deps import get_current_user, init_firebase
+from app.routers import market, news
 
 load_dotenv()
 init_firebase()
@@ -21,6 +21,7 @@ db = firestore.Client(
 # Create the main FastAPI application for MIDAS
 app = FastAPI(title="MIDAS API")
 app.include_router(news.router)
+app.include_router(market.router)
 
 # Default route that shows a message when MIDAS API is opened
 @app.get("/")
