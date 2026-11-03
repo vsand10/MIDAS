@@ -1,0 +1,49 @@
+.news__title {
+  margin-top: 6px;
+}
+
+/* Same gray pill as the Search screen */
+.news__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.news__search-icon {
+  position: absolute;
+  left: 18px;
+  width: 22px;
+  height: 22px;
+  color: #9a9aa2;
+  pointer-events: none;
+}
+
+.news__search-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 18px 0 50px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  background: #e7e7e8;
+  color: var(--midas-text);
+  font-size: 16px; /* prevents iOS zoom on focus */
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.news__search-input::placeholder {
+  color: #9a9aa2;
+}
+
+.news__search-input:focus {
+  border-color: #c9c9cd;
+  background: #ededee;
+}
+
+.news__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
