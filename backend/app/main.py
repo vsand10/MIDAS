@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
 from app.routers import market, news
+from app.services.alphavantage import quote_price, to_float
 from app.stock_detail import router as stock_detail_router
 
 load_dotenv()
@@ -229,17 +230,21 @@ async def get_stock_quotes(symbols: str):
 
         quotes = data.get("data", [])
 
-        return [
-            {
-                "symbol": quote.get("symbol"),
-                "price": float(quote.get("close", 0)),
-                "change": float(quote.get("change", 0)),
-                "changePercent": float(
-                    quote.get("change_percent", 0)
-                ),
-            }
-            for quote in quotes
-        ]
+        rows = []
+        for quote in quotes:
+            price = quote_price(quote)
+            # No usable price: leave the stock out (the app hides it) instead of showing $0.00
+            if price is None:
+                continue
+            rows.append(
+                {
+                    "symbol": quote.get("symbol"),
+                    "price": price,
+                    "change": to_float(quote.get("change")) or 0.0,
+                    "changePercent": to_float(quote.get("change_percent")) or 0.0,
+                }
+            )
+        return rows
 
     except httpx.HTTPError:
         raise HTTPException(

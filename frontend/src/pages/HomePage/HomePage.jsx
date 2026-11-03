@@ -4,7 +4,7 @@ import PriceChart from "../../components/PriceChart/PriceChart";
 import PriceChange from "../../components/PriceChart/PriceChange";
 import { ChangeBadge } from "../../components/StockRow/StockRow";
 import StockList from "../../components/Stocklist";
-import { useAsync } from "../../hooks/useAsync";
+import { REFRESH_EVERY_MS, useAsync } from "../../hooks/useAsync";
 import { getPriceDisplay } from "../../utils/chart";
 import {
   getIndexHistory,
@@ -20,10 +20,12 @@ export default function HomePage() {
   const [selected, setSelected] = useState("^GSPC"); // which index the chart shows
   const [scrub, setScrub] = useState(null);
 
-  const overview = useAsync(() => getMarketOverview(), []);
-  const movers = useAsync(() => getTopMovers(4), []);
-  const history = useAsync(() => getIndexHistory(selected, range), [selected, range]);
-  const watchlist = useAsync(() => getWatchlist(), []);
+  // Everything on Home refreshes quietly once a minute (see useAsync)
+  const live = { refreshMs: REFRESH_EVERY_MS };
+  const overview = useAsync(() => getMarketOverview(), [], live);
+  const movers = useAsync(() => getTopMovers(4), [], live);
+  const history = useAsync(() => getIndexHistory(selected, range), [selected, range], live);
+  const watchlist = useAsync(() => getWatchlist(), [], live);
 
   // If the market data API fails, one message + Retry replaces the market sections
   const marketFailed = Boolean(overview.error || movers.error);

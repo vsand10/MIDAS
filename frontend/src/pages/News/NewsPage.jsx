@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import NewsCard, { NewsCardSkeleton } from "../../components/NewsCard/NewsCard";
 import { useAsync } from "../../hooks/useAsync";
 import { getNews, getStock } from "../../services/stockservice";
+import { filterArticles } from "../../utils/news";
 import "./NewsPage.css";
 
 /** Full news list for one stock: /stock/:symbol/news */
@@ -16,13 +17,7 @@ export default function NewsPage() {
   // Only used for the title and the ticker pill; the page still works without it
   const stock = useAsync(() => getStock(sym).catch(() => null), [sym]);
 
-  const articles = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q || !news.data) return news.data ?? [];
-    return news.data.filter((a) =>
-      [a.title, a.summary, a.source].some((text) => text?.toLowerCase().includes(q))
-    );
-  }, [news.data, query]);
+  const articles = useMemo(() => filterArticles(news.data, query), [news.data, query]);
 
   const name = stock.data ? shortName(stock.data.name) : sym;
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate(`/stock/${sym}`));

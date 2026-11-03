@@ -110,6 +110,20 @@ def to_float(value: Any) -> float | None:
         return None
 
 
+def quote_price(quote: dict) -> float | None:
+    """Latest price from one REALTIME_BULK_QUOTES record, or None if it has no usable price.
+
+    "close" is the latest trade. Some stocks (thinly traded, or with no trade yet today)
+    come back with it missing or 0, so fall back to the after-hours price and then to
+    the previous close. A price of 0 is never returned.
+    """
+    for field in ("close", "extended_hours_quote", "previous_close"):
+        value = to_float(quote.get(field))
+        if value:
+            return value
+    return None
+
+
 class TTLCache:
     """Remembers results for a while so repeated requests skip Alpha Vantage.
 

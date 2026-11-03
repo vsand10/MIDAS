@@ -5,7 +5,7 @@ import NewsCard, { NewsCardSkeleton } from "../../components/NewsCard/NewsCard";
 import PriceChart from "../../components/PriceChart/PriceChart";
 import PriceChange from "../../components/PriceChart/PriceChange";
 import { ChangeBadge } from "../../components/StockRow/StockRow";
-import { useAsync } from "../../hooks/useAsync";
+import { REFRESH_EVERY_MS, useAsync } from "../../hooks/useAsync";
 import { getPriceDisplay } from "../../utils/chart";
 import {
   NotFoundError,
@@ -28,8 +28,10 @@ export default function StockDetailPage() {
   const [scrub, setScrub] = useState(null);
   const [tab, setTab] = useState("Overview");
 
-  const stock = useAsync(() => getStock(symbol), [symbol]);
-  const history = useAsync(() => getPriceHistory(symbol, range), [symbol, range]);
+  // Price and chart refresh quietly once a minute (see useAsync)
+  const live = { refreshMs: REFRESH_EVERY_MS };
+  const stock = useAsync(() => getStock(symbol), [symbol], live);
+  const history = useAsync(() => getPriceHistory(symbol, range), [symbol, range], live);
 
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/home"));
 
