@@ -8,8 +8,8 @@ from google.cloud import firestore
 from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
-from app.stock_detail import router as stock_detail_router
 from app.routers import market, news
+from app.stock_detail import router as stock_detail_router
 
 load_dotenv()
 init_firebase()
@@ -21,8 +21,10 @@ db = firestore.Client(
 
 # Create the main FastAPI application for MIDAS
 app = FastAPI(title="MIDAS API")
-app.include_router(news.router)
+
+# Home market data and stock news routes (see app/routers)
 app.include_router(market.router)
+app.include_router(news.router)
 
 # Default route that shows a message when MIDAS API is opened
 @app.get("/")
@@ -396,4 +398,6 @@ def remove_from_watchlist(
         "removed": True,
     }
 
+# Included last on purpose: its "/api/stocks/{symbol}" route would otherwise swallow the
+# fixed paths "/api/stocks/search" and "/api/stocks/quotes" defined above.
 app.include_router(stock_detail_router)

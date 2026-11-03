@@ -43,9 +43,18 @@ const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
  *
  * @typedef {{ time: string, price: number }} PricePoint   time = ISO date string
  *
- * @typedef {{ id: string, title: string, source: string, url: string, publishedAt: string }} NewsArticle
- *   publishedAt = ISO date string, articles come newest first
- * 
+ * @typedef {Object} NewsArticle   articles come newest first
+ * @property {string} id
+ * @property {string} title
+ * @property {string} source
+ * @property {string} url
+ * @property {string} publishedAt           ISO date string
+ * @property {string} summary
+ * @property {string|null} imageUrl
+ * @property {{ label: string, score: number|null }|null} sentiment   label e.g. "Somewhat-Bullish"
+ * @property {number} relevance             0 to 1, how much the article is about this stock
+ * @property {string[]} topics
+ *
  * @typedef {Object} TrendingTheme
  * @property {string} theme           "Robotics"
  * @property {string} description
@@ -79,10 +88,11 @@ export async function getIndexHistory(symbol, range = "1D") {
   return mockHistory(index.symbol, range, index.value, index.value - index.change);
 }
 
-/** "Top Movers Today" on Home. Returns StockSummary[] (biggest % moves first) */
+/** "Top Movers Today" on Home. Returns { gainers: StockSummary[], losers: StockSummary[] } */
 export async function getTopMovers(limit = 4) {
   if (!USE_MOCK_DATA) {
-    return getJson(`/market/movers?limit=${limit}`);  }
+    return getJson(`/market/movers?limit=${limit}`);
+  }
   await wait();
   const stocks = Object.values(MOCK_STOCKS).map(toSummary);
   const biggestFirst = (a, b) => b.changePercent - a.changePercent;
@@ -179,17 +189,6 @@ export async function getPriceHistory(symbol, range = "1D") {
   if (!stock) throw new NotFoundError(`No stock found for "${sym}"`);
   return mockHistory(sym, range, stock.price, stock.price - stock.change);
 }
-
-/** News tab on Stock Detail. Returns NewsArticle[] newest first, or [] when there is no news */
-export async function getNews(symbol, limit = 10) {
-  const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    return getJson(`/stocks/${encodeURIComponent(sym)}/news?limit=${limit}`);
-  }
-  await wait(200);
-  return (MOCK_NEWS[sym] ?? []).slice(0, limit); // only some stocks have sample news
-}
-
 
 // ---------------- Watchlist ----------------
 // Mock version keeps the list in memory. The real version will call the
@@ -416,10 +415,7 @@ function readRecent() {
 // ------------------------------------------------------------------
 export class NotFoundError extends Error {}
 
-// Used once USE_MOCK_DATA = false. Attach the Firebase login token here, e.g.
-//   const token = await auth.currentUser?.getIdToken();
-//   headers.Authorization = `Bearer ${token}`;
-// eslint-disable-next-line no-unused-vars
+// Calls the MIDAS backend with the Firebase login token attached
 async function getJson(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" };
 

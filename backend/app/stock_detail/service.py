@@ -2,9 +2,9 @@
 # and caches the results. Returns plain dicts: router.py defines their exact shape.
 import asyncio
 import logging
-import os
 from datetime import timedelta
 
+from app.services.alphavantage import entitlement
 from app.stock_detail.cache import TTLCache
 from app.stock_detail.client import (
     AlphaVantageClient,
@@ -27,12 +27,6 @@ OVERVIEW_TTL = 6 * 60 * 60  # company facts barely change
 
 # Chart range -> where its data comes from
 INTRADAY_INTERVAL = {"1D": "5min", "1W": "60min"}
-
-
-def _entitlement() -> dict:
-    """Optional: set ALPHA_VANTAGE_ENTITLEMENT to 'realtime' or 'delayed' (see .env.example)."""
-    value = (os.getenv("ALPHA_VANTAGE_ENTITLEMENT") or "").strip().lower()
-    return {"entitlement": value} if value else {}
 
 
 def _iso(moment) -> str:
@@ -117,7 +111,7 @@ class StockDetailService:
 
     def _quote(self, symbol):
         async def fetch():
-            payload = await self._client.request("GLOBAL_QUOTE", symbol=symbol, **_entitlement())
+            payload = await self._client.request("GLOBAL_QUOTE", symbol=symbol, **entitlement())
             return parse_quote(payload)
 
         return self._cache.get_or_fetch(("quote", symbol), QUOTE_TTL, fetch)
@@ -136,7 +130,7 @@ class StockDetailService:
                 interval=interval,
                 outputsize="full",
                 extended_hours="false",  # chart regular trading hours only
-                **_entitlement(),
+                **entitlement(),
             )
             return parse_bars(payload)
 

@@ -15,6 +15,7 @@ from app.services.alphavantage import (
     TTLCache,
     av_get,
     company_names_or_empty,
+    entitlement,
     to_float,
 )
 
@@ -105,8 +106,8 @@ def _fetch_etf_intraday(etf: str, interval: str) -> dict:
         "TIME_SERIES_INTRADAY",
         symbol=etf,
         interval=interval,
-        entitlement="realtime",
         extended_hours="false",
+        **entitlement(),
     )
     return data.get(f"Time Series ({interval})", {})
 
@@ -117,7 +118,7 @@ def _fetch_quotes(symbols: list[str]) -> list[dict]:
 
 
 def _fetch_gainers_losers() -> dict:
-    return av_get("TOP_GAINERS_LOSERS", entitlement="realtime")
+    return av_get("TOP_GAINERS_LOSERS", **entitlement())
 
 
 # ---------------- Helpers ----------------
@@ -212,8 +213,7 @@ def intraday_points(series: dict, ratio: float, days: int) -> list[dict]:
     """Chart points from an Alpha Vantage intraday series, scaled by `ratio`.
 
     Keeps only the latest `days` trading days (this also works on weekends).
-    Shared with the Stock Detail chart (ratio 1).
-    """
+        """
     points = []
     for stamp in sorted(series):
         close = to_float((series[stamp] or {}).get("4. close"))
@@ -232,7 +232,7 @@ def intraday_points(series: dict, ratio: float, days: int) -> list[dict]:
 def daily_points(closes: list[tuple[str, float | None]], calendar_days: int) -> list[dict]:
     """Chart points from (date, close) pairs, keeping the last `calendar_days` days.
 
-    A day is shown at its 4 pm market close. Shared with the Stock Detail chart.
+    A day is shown at its 4 pm market close.
     """
     rows = sorted((d, c) for d, c in closes if d and c)
     if not rows:

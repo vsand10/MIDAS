@@ -83,7 +83,7 @@ export default function NewsPage() {
           </div>
         ) : articles.length === 0 ? (
           <p className="card empty-state">
-            {query ? "No articles match your search." : `No recent news for ${sym}.`}
+            {query ? "No articles found" : "No recent news for this stock"}
           </p>
         ) : (
           <div className="news__list">

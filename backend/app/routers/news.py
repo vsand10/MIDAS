@@ -21,7 +21,7 @@ SYMBOL_PATTERN = re.compile(r"[A-Z0-9.\-^=]{1,15}")
 
 
 @router.get("/{symbol}/news")
-def stock_news(symbol: str, limit: Annotated[int, Query(ge=1, le=25)] = 10):
+def stock_news(symbol: str, limit: Annotated[int, Query(ge=1, le=50)] = 10):
     """Recent articles for a stock, newest first. An empty list means no news."""
     clean = symbol.strip().upper()
     if not SYMBOL_PATTERN.fullmatch(clean):

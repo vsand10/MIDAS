@@ -10,10 +10,12 @@ python-dotenv
 ruff
 
 firebase-admin
-tzdata
 httpx
-
+# Time zone data for New York market times (Windows has none built in)
+tzdata
 
 requests
 Pygments
+
+# Runs the backend tests
 pytest

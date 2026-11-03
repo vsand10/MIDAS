@@ -27,6 +27,17 @@ class DataUnavailableError(Exception):
     """Raised when Alpha Vantage could not give us usable data."""
 
 
+def entitlement() -> dict[str, str]:
+    """{"entitlement": "realtime"} when ALPHA_VANTAGE_ENTITLEMENT is set, otherwise {}.
+
+    Without it Alpha Vantage may answer with delayed or even a day-old data
+    (top gainers and losers came back a day old). Needs a premium key, so it is
+    opt-in: put ALPHA_VANTAGE_ENTITLEMENT=realtime in backend/.env.
+    """
+    value = (os.getenv("ALPHA_VANTAGE_ENTITLEMENT") or "").strip().lower()
+    return {"entitlement": value} if value else {}
+
+
 def _send(params: dict[str, str]) -> tuple[int, str]:
     """The only function that touches the network. Tests replace it.
 
@@ -51,20 +62,14 @@ def _request(function: str, params: dict[str, Any]) -> str:
     return text
 
 
-def av_get(function: str, allow_empty: bool = False, **params: Any) -> dict:
-    """Calls one Alpha Vantage function and returns the JSON as a dictionary.
-
-    An empty answer is an error, unless allow_empty is set (OVERVIEW answers {} for
-    a symbol it does not know, which is an answer and not an outage).
-    """
+def av_get(function: str, **params: Any) -> dict:
+    """Calls one Alpha Vantage function and returns the JSON as a dictionary."""
     text = _request(function, params)
     try:
         data = json.loads(text)
     except ValueError:
         raise DataUnavailableError("Alpha Vantage sent something that is not JSON") from None
-    if not isinstance(data, dict):
-        raise DataUnavailableError("Alpha Vantage sent an unexpected answer")
-    if not data and not allow_empty:
+    if not isinstance(data, dict) or not data:
         raise DataUnavailableError("Alpha Vantage sent an empty answer")
     for message_key in MESSAGE_KEYS:
         if message_key in data:

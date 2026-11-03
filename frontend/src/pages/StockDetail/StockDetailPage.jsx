@@ -17,7 +17,6 @@ import {
   removeFromWatchlist,
 } from "../../services/stockservice";
 import { formatCompact, formatMoneyCompact, formatPrice } from "../../utils/format";
-import NewsTab from "./NewsTab";
 import "./StockDetailPage.css";
 
 const TABS = ["Overview", "Why it moved", "News", "Sentiment"];
@@ -174,7 +173,7 @@ function NewsPreview({ symbol }) {
           </button>
         </div>
       ) : !news.data.length ? (
-        <p className="card empty-state">No recent news for {symbol}.</p>
+        <p className="card empty-state">No recent news for this stock</p>
       ) : (
         <div className="stock__news">
           {news.data.map((a) => (

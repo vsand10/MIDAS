@@ -74,12 +74,17 @@ def _mentions(title: str, symbol: str, keywords: list[str]) -> bool:
     return len(symbol) >= 3 and re.search(rf"\b{re.escape(symbol)}\b", title) is not None
 
 
-def _relevance(raw: dict, symbol: str) -> float:
-    """The article's relevance score for this ticker (0 if the ticker is not listed)."""
+def _ticker_entry(raw: dict, symbol: str) -> dict:
+    """Alpha Vantage's scores for this ticker in this article ({} if it is not listed)."""
     for entry in raw.get("ticker_sentiment") or []:
         if isinstance(entry, dict) and entry.get("ticker") == symbol:
-            return to_float(entry.get("relevance_score")) or 0.0
-    return 0.0
+            return entry
+    return {}
+
+
+def _relevance(raw: dict, symbol: str) -> float:
+    """The article's relevance score for this ticker (0 if the ticker is not listed)."""
+    return to_float(_ticker_entry(raw, symbol).get("relevance_score")) or 0.0
 
 
 def is_relevant(raw: dict, symbol: str, keywords: list[str]) -> bool:
@@ -99,18 +104,32 @@ def _parse_time(value: object) -> datetime | None:
         return None
 
 
-def normalize_article(raw: dict) -> dict | None:
-    """Turns one feed item into {id, title, source, url, publishedAt}.
+def _sentiment(raw: dict, symbol: str) -> dict | None:
+    """{"label": "Somewhat-Bullish", "score": 0.21} for this ticker, else for the whole article."""
+    entry = _ticker_entry(raw, symbol)
+    label = entry.get("ticker_sentiment_label") or raw.get("overall_sentiment_label")
+    score = to_float(entry.get("ticker_sentiment_score"))
+    if score is None:
+        score = to_float(raw.get("overall_sentiment_score"))
+    if not label:
+        return None
+    return {"label": str(label), "score": score}
+
+
+def normalize_article(raw: dict, symbol: str) -> dict | None:
+    """Turns one feed item into the article the News screens show.
 
     Items missing a headline, a web link or a time are dropped, since the
-    screen needs all three. Only http(s) links are kept, so a bad feed can
-    never hand the app a javascript: link.
+    screens need all three. Only http(s) links and images are kept, so a bad
+    feed can never hand the app a javascript: link.
     """
     title = str(raw.get("title") or "").strip()
     url = raw.get("url")
     published = _parse_time(raw.get("time_published"))
-    if not (title and published and isinstance(url, str) and url.startswith(("https://", "http://"))):
+    if not (title and published and _is_web_link(url)):
         return None
+    image = raw.get("banner_image")
+    topics = [t.get("topic") for t in raw.get("topics") or [] if isinstance(t, dict) and t.get("topic")]
     return {
         "id": url,
         "title": title,
@@ -118,7 +137,16 @@ def normalize_article(raw: dict) -> dict | None:
         "url": url,
         # Always UTC, so sorting the text also sorts by time
         "publishedAt": published.isoformat(),
+        "summary": str(raw.get("summary") or "").strip(),
+        "imageUrl": image if _is_web_link(image) else None,
+        "sentiment": _sentiment(raw, symbol),
+        "relevance": _relevance(raw, symbol),
+        "topics": [str(t) for t in topics[:3]],
     }
+
+
+def _is_web_link(value: object) -> bool:
+    return isinstance(value, str) and value.startswith(("https://", "http://"))
 
 
 def build_articles(
@@ -130,7 +158,7 @@ def build_articles(
     for raw in raw_items or []:
         if not isinstance(raw, dict) or not is_relevant(raw, symbol, keywords):
             continue
-        article = normalize_article(raw)
+        article = normalize_article(raw, symbol)
         if article and article["url"] not in seen:
             seen.add(article["url"])
             articles.append(article)
