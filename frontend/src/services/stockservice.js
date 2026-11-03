@@ -15,6 +15,7 @@ import { auth } from "../auth/firebase";
 const USE_MOCK_DATA = false;
 const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
 const USE_REAL_WATCHLIST = true;
+const USE_REAL_STOCK_DETAIL = true; // If true, the Stock Detail screen (stats + chart) calls the real API
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
 
 // ------------------------------------------------------------------
@@ -158,8 +159,8 @@ export async function getTrendingThemes() {
 /** Specific Stock screen. Returns StockDetail, or throws NotFoundError */
 export async function getStock(symbol) {
   const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/stocks/${sym}`);
+  if (USE_REAL_STOCK_DETAIL) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}`);
   }
   await wait();
   const stock = MOCK_STOCKS[sym];
@@ -170,8 +171,8 @@ export async function getStock(symbol) {
 /** Price chart. Returns PricePoint[] oldest to newest */
 export async function getPriceHistory(symbol, range = "1D") {
   const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/stocks/${sym}/history?range=${range}`);
+  if (USE_REAL_STOCK_DETAIL) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}/history?range=${range}`);
   }
   await wait(200);
   const stock = MOCK_STOCKS[sym];
@@ -288,6 +289,15 @@ export async function getAlerts(limit = 10) {
   }
   await wait();
   return MOCK_ALERTS.slice(0, limit);
+}
+
+export async function getNews(symbol, limit = 20) {
+  const sym = symbol.toUpperCase();
+  if (!USE_MOCK_DATA) {
+    return getJson(`/stocks/${sym}/news?limit=${limit}`);
+  }
+  await wait();
+  return mockNews(sym).slice(0, limit);
 }
 
 // ---------------- Recent searches (kept on this device) ----------------
@@ -538,19 +548,31 @@ const MOCK_ALERTS = [
   },
 ];
 
-const MOCK_NEWS = {
-  AAPL: [
-    { id: "n1", title: "Apple unveils new chip for next-generation laptops", source: "Reuters",
-      url: "https://example.com/aapl-chip", publishedAt: hoursAgo(3) },
-    { id: "n2", title: "Supplier update points to strong iPhone demand", source: "Bloomberg",
-      url: "https://example.com/aapl-supplier", publishedAt: hoursAgo(50) },
-  ],
-  NVDA: [
-    { id: "n3", title: "NVIDIA expands AI data center lineup", source: "CNBC",
-      url: "https://example.com/nvda-ai", publishedAt: hoursAgo(1) },
-  ],
-};
-
+function mockNews(symbol) {
+  const stock = MOCK_STOCKS[symbol];
+  if (!stock) return [];
+  const name = stock.name.replace(/ (Inc\.|Corp\.|Corporation|Group|& Co\.)$/, "");
+  const items = [
+    ["TipRanks", `${name} gets a fresh price target after analyst review`, "Somewhat-Bullish", 0.28, 1.5],
+    ["Financial Times", `What investors are watching in ${name}'s next earnings report`, "Neutral", 0.04, 5],
+    ["Nasdaq", `${symbol} stock moves as sector rotates; here's what's driving it`, stock.change >= 0 ? "Bullish" : "Bearish", stock.change >= 0 ? 0.41 : -0.38, 9],
+    ["Nasdaq", `How much a $1,000 investment in ${symbol} five years ago is worth now`, "Neutral", 0.08, 26],
+    ["Reuters", `${name} faces supply questions as demand outlook shifts`, "Somewhat-Bearish", -0.19, 49],
+    ["MarketWatch", `3 things to know about ${name} before the market opens`, "Neutral", 0.02, 74],
+  ];
+  return items.map(([source, title, label, score, hours], i) => ({
+    id: `${symbol}-${i}`,
+    title,
+    url: "https://example.com/sample-article",
+    source,
+    publishedAt: new Date(Date.now() - hours * 3600e3).toISOString(),
+    summary: `Sample summary for this article about ${name}. Real summaries will come from Alpha Vantage once the news API is connected.`,
+    imageUrl: null,
+    sentiment: { label, score },
+    relevance: 0.8,
+    topics: ["Technology"],
+  }));
+}
 
 /**
  * Fake but repeatable price history that ends at the current price.

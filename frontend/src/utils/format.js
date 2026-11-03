@@ -45,6 +45,28 @@ export const formatAlertTime = (iso) => {
   return `${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${time}`;
 };
 
+
+/** News times: "Just now", "12m ago", "3h ago", "Yesterday", "Oct 18" */
+export const formatTimeAgo = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const minutes = Math.floor((Date.now() - d) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  if (hours < 48) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+ 
+
+export const describeSentiment = (label) => {
+  if (!label) return null;
+  const text = label.replace("-", " ").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+  const tone = /bullish/i.test(label) ? "up" : /bearish/i.test(label) ? "down" : "flat";
+  return { text, tone };
+};
+
 /** "up" | "down" | "flat" - used to pick green/red styling */
 export const direction = (n) => (n > 0 ? "up" : n < 0 ? "down" : "flat");
 
