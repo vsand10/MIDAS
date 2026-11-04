@@ -15,7 +15,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     # PostgreSQL uses port 5432
     ports:
-      - "5433:5432"
+      - "5432:5432"
     # Keep database data saved even if the container stops
     volumes:
       - postgres_data:/var/lib/postgresql/data

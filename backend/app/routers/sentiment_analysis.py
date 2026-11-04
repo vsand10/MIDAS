@@ -1,6 +1,5 @@
 import torch
-from fastapi import FastAPI
-from fastapi import APIRouter
+from fastapi import APIRouter, FastAPI
 from scipy.special import softmax
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 

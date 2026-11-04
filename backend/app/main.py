@@ -9,9 +9,9 @@ from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
 from app.routers import market, news
+from app.routers.sentiment_analysis import router as sentiment_router
 from app.services.alphavantage import quote_price, to_float
 from app.stock_detail import router as stock_detail_router
-from app.routers.sentiment_analysis import router as sentiment_router
 
 load_dotenv()
 init_firebase()
