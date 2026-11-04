@@ -17,5 +17,10 @@ tzdata
 requests
 Pygments
 
+transformers
+xdk
+torch
+scipy
+
 # Runs the backend tests
 pytest
