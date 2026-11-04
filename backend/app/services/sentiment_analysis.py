@@ -39,10 +39,3 @@ def twitter_analysis(query: str):
     tweets = twitter_service.get_tweets(query)
     sentiments = analyze_sentiments(tweets)
     return {"sentiments": sentiments}
-
-def main():
-    sentiments = twitter_analysis("OpenAI")
-    print("Sentiment scores (negative, neutral, positive):", sentiments)
-
-if __name__ == "__main__":
-    main()  
