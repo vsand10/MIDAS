@@ -10,8 +10,9 @@ python-dotenv
 ruff
 
 firebase-admin
-yfinance
 httpx
+# Time zone data for New York market times (Windows has none built in)
+tzdata
 
 requests
 Pygments
@@ -21,3 +22,5 @@ xdk
 torch
 scipy
 
+# Runs the backend tests
+pytest

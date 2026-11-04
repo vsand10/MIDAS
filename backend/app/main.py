@@ -8,6 +8,9 @@ from google.cloud import firestore
 from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
+from app.routers import market, news
+from app.services.alphavantage import quote_price, to_float
+from app.stock_detail import router as stock_detail_router
 
 load_dotenv()
 init_firebase()
@@ -19,6 +22,10 @@ db = firestore.Client(
 
 # Create the main FastAPI application for MIDAS
 app = FastAPI(title="MIDAS API")
+
+# Home market data and stock news routes (see app/routers)
+app.include_router(market.router)
+app.include_router(news.router)
 
 # Default route that shows a message when MIDAS API is opened
 @app.get("/")
@@ -223,17 +230,21 @@ async def get_stock_quotes(symbols: str):
 
         quotes = data.get("data", [])
 
-        return [
-            {
-                "symbol": quote.get("symbol"),
-                "price": float(quote.get("close", 0)),
-                "change": float(quote.get("change", 0)),
-                "changePercent": float(
-                    quote.get("change_percent", 0)
-                ),
-            }
-            for quote in quotes
-        ]
+        rows = []
+        for quote in quotes:
+            price = quote_price(quote)
+            # No usable price: leave the stock out (the app hides it) instead of showing $0.00
+            if price is None:
+                continue
+            rows.append(
+                {
+                    "symbol": quote.get("symbol"),
+                    "price": price,
+                    "change": to_float(quote.get("change")) or 0.0,
+                    "changePercent": to_float(quote.get("change_percent")) or 0.0,
+                }
+            )
+        return rows
 
     except httpx.HTTPError:
         raise HTTPException(
@@ -391,3 +402,7 @@ def remove_from_watchlist(
         "symbol": sym,
         "removed": True,
     }
+
+# Included last on purpose: its "/api/stocks/{symbol}" route would otherwise swallow the
+# fixed paths "/api/stocks/search" and "/api/stocks/quotes" defined above.
+app.include_router(stock_detail_router)

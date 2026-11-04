@@ -1,20 +1,21 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import ConfirmModal from "../../components/Modal/ConfirmModal";
+import NewsCard, { NewsCardSkeleton } from "../../components/NewsCard/NewsCard";
 import PriceChart from "../../components/PriceChart/PriceChart";
 import PriceChange from "../../components/PriceChart/PriceChange";
 import { ChangeBadge } from "../../components/StockRow/StockRow";
-import { useAsync } from "../../hooks/useAsync";
+import { REFRESH_EVERY_MS, useAsync } from "../../hooks/useAsync";
 import { getPriceDisplay } from "../../utils/chart";
 import {
   NotFoundError,
   addToWatchlist,
+  getNews,
   getPriceHistory,
   getStock,
   isInWatchlist,
   removeFromWatchlist,
 } from "../../services/stockservice";
-
 import { formatCompact, formatMoneyCompact, formatPrice } from "../../utils/format";
 import "./StockDetailPage.css";
 
@@ -27,8 +28,10 @@ export default function StockDetailPage() {
   const [scrub, setScrub] = useState(null);
   const [tab, setTab] = useState("Overview");
 
-  const stock = useAsync(() => getStock(symbol), [symbol]);
-  const history = useAsync(() => getPriceHistory(symbol, range), [symbol, range]);
+  // Price and chart refresh quietly once a minute (see useAsync)
+  const live = { refreshMs: REFRESH_EVERY_MS };
+  const stock = useAsync(() => getStock(symbol), [symbol], live);
+  const history = useAsync(() => getPriceHistory(symbol, range), [symbol, range], live);
 
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate("/home"));
 
@@ -132,6 +135,8 @@ export default function StockDetailPage() {
       <div role="tabpanel" id={`panel-${slug(tab)}`} aria-labelledby={`tab-${slug(tab)}`}>
         {tab === "Overview" ? (
           <Overview stock={data} />
+        ) : tab === "News" ? (
+          <NewsPreview symbol={symbol.toUpperCase()} />
         ) : (
           <div className="card stock__coming-soon">
             {/* TODO: build the "{tab}" section once its API is ready */}
@@ -142,6 +147,43 @@ export default function StockDetailPage() {
 
       {data && <WatchlistButton stock={data} />}
     </main>
+  );
+}
+
+/** News tab: the 3 latest articles + a link to the full News screen */
+function NewsPreview({ symbol }) {
+  const news = useAsync(() => getNews(symbol, 3), [symbol]);
+
+  return (
+    <section className="section stock__section">
+      <div className="section__header">
+        <h2 className="section__title">Latest News</h2>
+        <Link to={`/stock/${symbol}/news`} className="section__link">
+          See All
+        </Link>
+      </div>
+      {news.loading && !news.data ? (
+        <div className="stock__news">
+          <NewsCardSkeleton count={3} />
+        </div>
+      ) : news.error ? (
+        <div className="card error-state" role="alert">
+          {news.error.message || "Couldn't load the news."}
+          <br />
+          <button type="button" onClick={news.reload}>
+            Try again
+          </button>
+        </div>
+      ) : !news.data.length ? (
+        <p className="card empty-state">No recent news for this stock</p>
+      ) : (
+        <div className="stock__news">
+          {news.data.map((a) => (
+            <NewsCard key={a.id} article={a} compact />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

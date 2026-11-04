@@ -12,9 +12,10 @@
  */
 import { auth } from "../auth/firebase";
 
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 const USE_REAL_SEARCH = true;    // If true, the Search screen will call the real API
 const USE_REAL_WATCHLIST = true;
+const USE_REAL_STOCK_DETAIL = true; // If true, the Stock Detail screen (stats + chart) calls the real API
 const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
 
 // ------------------------------------------------------------------
@@ -42,6 +43,18 @@ const API_BASE = "/api"; // FastAPI backend (proxied by Vite)
  *
  * @typedef {{ time: string, price: number }} PricePoint   time = ISO date string
  *
+ * @typedef {Object} NewsArticle   articles come newest first
+ * @property {string} id
+ * @property {string} title
+ * @property {string} source
+ * @property {string} url
+ * @property {string} publishedAt           ISO date string
+ * @property {string} summary
+ * @property {string|null} imageUrl
+ * @property {{ label: string, score: number|null }|null} sentiment   label e.g. "Somewhat-Bullish"
+ * @property {number} relevance             0 to 1, how much the article is about this stock
+ * @property {string[]} topics
+ *
  * @typedef {Object} TrendingTheme
  * @property {string} theme           "Robotics"
  * @property {string} description
@@ -55,33 +68,38 @@ export const SECTORS = ["All", "Tech", "Energy", "Finance", "Health"];
 // Public functions used by the pages
 // ------------------------------------------------------------------
 
-/** S&P 500 card on Home. Returns { name, value, change, changePercent, history: PricePoint[] } */
-export async function getMarketIndex(range = "1D") {
+/** Market overview on Home. Returns [{ symbol, name, value, change, changePercent }] for S&P 500, Nasdaq, Dow */
+export async function getMarketOverview() {
   if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/market/index/SPX?range=${range}`);
+    const data = await getJson("/market/overview");
+    return data.indices;
   }
   await wait();
-  const value = 7638.09;
-  return {
-    name: "S&P 500",
-    symbol: "SPX",
-    value,
-    change: -30.92,
-    changePercent: -0.4,
-    history: mockHistory("SPX", range, value, value - (-30.92)),
-  };
+  return MOCK_INDICES;
 }
 
-/** "Top Movers Today" on Home. Returns StockSummary[] (biggest % moves first) */
+/** Chart on Home for one index ("^GSPC", "^IXIC" or "^DJI"). Returns PricePoint[] oldest to newest */
+export async function getIndexHistory(symbol, range = "1D") {
+  if (!USE_MOCK_DATA) {
+    return getJson(`/market/history?symbol=${encodeURIComponent(symbol)}&range=${range}`);
+  }
+  await wait(200);
+  const index = MOCK_INDICES.find((i) => i.symbol === symbol) ?? MOCK_INDICES[0];
+  return mockHistory(index.symbol, range, index.value, index.value - index.change);
+}
+
+/** "Top Movers Today" on Home. Returns { gainers: StockSummary[], losers: StockSummary[] } */
 export async function getTopMovers(limit = 4) {
   if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/market/movers?limit=${limit}`);
+    return getJson(`/market/movers?limit=${limit}`);
   }
   await wait();
-  return Object.values(MOCK_STOCKS)
-    .map(toSummary)
-    .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent))
-    .slice(0, limit);
+  const stocks = Object.values(MOCK_STOCKS).map(toSummary);
+  const biggestFirst = (a, b) => b.changePercent - a.changePercent;
+  return {
+    gainers: stocks.filter((s) => s.changePercent > 0).sort(biggestFirst).slice(0, limit),
+    losers: stocks.filter((s) => s.changePercent < 0).sort((a, b) => biggestFirst(b, a)).slice(0, limit),
+  };
 }
 
 /** Search screen. Returns StockSummary[] matching the text and sector chip */
@@ -151,8 +169,8 @@ export async function getTrendingThemes() {
 /** Specific Stock screen. Returns StockDetail, or throws NotFoundError */
 export async function getStock(symbol) {
   const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/stocks/${sym}`);
+  if (USE_REAL_STOCK_DETAIL) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}`);
   }
   await wait();
   const stock = MOCK_STOCKS[sym];
@@ -163,8 +181,8 @@ export async function getStock(symbol) {
 /** Price chart. Returns PricePoint[] oldest to newest */
 export async function getPriceHistory(symbol, range = "1D") {
   const sym = symbol.toUpperCase();
-  if (!USE_MOCK_DATA) {
-    // TODO (real API): return getJson(`/stocks/${sym}/history?range=${range}`);
+  if (USE_REAL_STOCK_DETAIL) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}/history?range=${range}`);
   }
   await wait(200);
   const stock = MOCK_STOCKS[sym];
@@ -270,6 +288,15 @@ export async function getAlerts(limit = 10) {
   }
   await wait();
   return MOCK_ALERTS.slice(0, limit);
+}
+
+export async function getNews(symbol, limit = 20) {
+  const sym = symbol.toUpperCase();
+  if (!USE_MOCK_DATA) {
+    return getJson(`/stocks/${sym}/news?limit=${limit}`);
+  }
+  await wait();
+  return mockNews(sym).slice(0, limit);
 }
 
 // ---------------- Recent searches (kept on this device) ----------------
@@ -388,10 +415,7 @@ function readRecent() {
 // ------------------------------------------------------------------
 export class NotFoundError extends Error {}
 
-// Used once USE_MOCK_DATA = false. Attach the Firebase login token here, e.g.
-//   const token = await auth.currentUser?.getIdToken();
-//   headers.Authorization = `Bearer ${token}`;
-// eslint-disable-next-line no-unused-vars
+// Calls the MIDAS backend with the Firebase login token attached
 async function getJson(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" };
 
@@ -484,6 +508,12 @@ const MOCK_THEMES = [
   },
 ];
 
+const MOCK_INDICES = [
+  { symbol: "^GSPC", name: "S&P 500", value: 7638.09, change: -30.92, changePercent: -0.4 },
+  { symbol: "^IXIC", name: "Nasdaq", value: 25214.6, change: 118.35, changePercent: 0.47 },
+  { symbol: "^DJI", name: "Dow", value: 44120.8, change: -62.4, changePercent: -0.14 },
+];
+
 let mockWatchlist = ["AMZN", "NVDA", "AAPL", "TSLA", "MSFT"];
 
 const hoursAgo = (h) => new Date(Date.now() - h * 3600e3).toISOString();
@@ -513,6 +543,32 @@ const MOCK_ALERTS = [
     reason: null,
   },
 ];
+
+function mockNews(symbol) {
+  const stock = MOCK_STOCKS[symbol];
+  if (!stock) return [];
+  const name = stock.name.replace(/ (Inc\.|Corp\.|Corporation|Group|& Co\.)$/, "");
+  const items = [
+    ["TipRanks", `${name} gets a fresh price target after analyst review`, "Somewhat-Bullish", 0.28, 1.5],
+    ["Financial Times", `What investors are watching in ${name}'s next earnings report`, "Neutral", 0.04, 5],
+    ["Nasdaq", `${symbol} stock moves as sector rotates; here's what's driving it`, stock.change >= 0 ? "Bullish" : "Bearish", stock.change >= 0 ? 0.41 : -0.38, 9],
+    ["Nasdaq", `How much a $1,000 investment in ${symbol} five years ago is worth now`, "Neutral", 0.08, 26],
+    ["Reuters", `${name} faces supply questions as demand outlook shifts`, "Somewhat-Bearish", -0.19, 49],
+    ["MarketWatch", `3 things to know about ${name} before the market opens`, "Neutral", 0.02, 74],
+  ];
+  return items.map(([source, title, label, score, hours], i) => ({
+    id: `${symbol}-${i}`,
+    title,
+    url: "https://example.com/sample-article",
+    source,
+    publishedAt: new Date(Date.now() - hours * 3600e3).toISOString(),
+    summary: `Sample summary for this article about ${name}. Real summaries will come from Alpha Vantage once the news API is connected.`,
+    imageUrl: null,
+    sentiment: { label, score },
+    relevance: 0.8,
+    topics: ["Technology"],
+  }));
+}
 
 /**
  * Fake but repeatable price history that ends at the current price.

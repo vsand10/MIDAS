@@ -9,3 +9,8 @@ ignore = ["EXE002"]
 # Ruff's B008 rule flags every protected route, so treat Depends as safe.
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends"]
+
+# Pytest settings: tests live in backend/tests and import from the app package
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

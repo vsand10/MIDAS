@@ -32,3 +32,6 @@ jobs:
        # Run Ruff to check Python code quality
       - name: Run Ruff
         run: ruff check .
+      # Run the backend tests (they use fake data, so no internet is needed)
+      - name: Run tests
+        run: pytest

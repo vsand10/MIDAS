@@ -36,3 +36,62 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Index tiles (S&P 500 / Nasdaq / Dow) ---------- */
+.home__indices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.home__index {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 9px 8px;
+  border: 1.5px solid var(--midas-border);
+  border-radius: 12px;
+  background: var(--midas-card);
+  color: var(--midas-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home__index.is-active {
+  border-color: var(--midas-blue);
+  background: var(--midas-blue-tint);
+}
+
+.home__index:focus-visible {
+  outline: 2px solid var(--midas-gold);
+  outline-offset: 2px;
+}
+
+.home__index-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--midas-muted);
+}
+
+.home__index-value {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Gainers / losers headings ---------- */
+.home__subtitle {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--midas-muted);
+}
+
+.home__note {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--midas-muted);
+}
