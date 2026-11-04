@@ -1,7 +1,7 @@
 import torch
+from fastapi import FastAPI
 from scipy.special import softmax
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from fastapi import FastAPI
 
 sentiment_app = FastAPI()
 

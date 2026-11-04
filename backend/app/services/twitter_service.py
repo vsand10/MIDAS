@@ -1,6 +1,7 @@
-from xdk import Client
 import os
+
 from dotenv import load_dotenv
+from xdk import Client
 
 load_dotenv()
 key = os.getenv("X_API_KEY")
