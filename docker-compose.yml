@@ -32,6 +32,7 @@ services:
     # Connect the local backend folder to the container
     volumes:
       - ./backend:/app
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
     # Give the backend the database connection address
     environment:
       DATABASE_URL: ${DATABASE_URL}

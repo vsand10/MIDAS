@@ -13,7 +13,7 @@ else:
 def get_tweets(query: str):
     tweets = []
     for page in client.posts.search_recent(
-        query=f"{query} lang:en min_likes:300 min_reposts:300 min_replies:300 is:verified -is:nullcast"
+        query=f"({query}) lang:en min_likes:1000 min_reposts:200 min_replies:100 is:verified -is:nullcast"
     ):
         if page.data is None:
             continue

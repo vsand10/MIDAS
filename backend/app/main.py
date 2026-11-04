@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
 from app.routers import market, news
+from app.routers.sentiment_analysis import router as sentiment_router
 from app.services.alphavantage import quote_price, to_float
 from app.stock_detail import router as stock_detail_router
 
@@ -406,3 +407,4 @@ def remove_from_watchlist(
 # Included last on purpose: its "/api/stocks/{symbol}" route would otherwise swallow the
 # fixed paths "/api/stocks/search" and "/api/stocks/quotes" defined above.
 app.include_router(stock_detail_router)
+app.include_router(sentiment_router)

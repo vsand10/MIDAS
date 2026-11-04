@@ -620,3 +620,7 @@ function seededRandom(seedText) {
 function round(n) {
   return Math.round(n * 100) / 100;
 }
+
+export async function getTwitterSentiment(query) {
+  return getJson(`/sentiment/twitter/${encodeURIComponent(query)}`);
+}

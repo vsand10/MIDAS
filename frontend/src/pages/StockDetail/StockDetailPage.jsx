@@ -15,6 +15,7 @@ import {
   getStock,
   isInWatchlist,
   removeFromWatchlist,
+  getTwitterSentiment,
 } from "../../services/stockservice";
 import { formatCompact, formatMoneyCompact, formatPrice } from "../../utils/format";
 import "./StockDetailPage.css";
@@ -137,9 +138,14 @@ export default function StockDetailPage() {
           <Overview stock={data} />
         ) : tab === "News" ? (
           <NewsPreview symbol={symbol.toUpperCase()} />
+        ) : tab === "Sentiment" ? (
+          data ? (
+            <SentimentPanel stock={data} />
+          ) : (
+            <p>Loading stock details…</p>
+          )
         ) : (
           <div className="card stock__coming-soon">
-            {/* TODO: build the "{tab}" section once its API is ready */}
             <p>{tab} is coming soon.</p>
           </div>
         )}
@@ -311,3 +317,40 @@ function BackButton({ onClick }) {
 }
 
 const slug = (s) => s.toLowerCase().replace(/\s+/g, "-");
+
+function SentimentPanel({ stock }) {
+  const result = useAsync(() => getTwitterSentiment(`${stock.symbol} OR ${stock.name}`), [stock.symbol, stock.name]);
+  const scores = result.data?.sentiments;
+
+  if (result.loading) return <p>Loading sentiment…</p>;
+
+  if (result.error) {
+    return (
+      <div className="card error-state" role="alert">
+        Couldn't load sentiment.
+        <button type="button" onClick={result.reload}>Try again</button>
+      </div>
+    );
+  }
+
+  if (!Array.isArray(scores) || scores.length !== 3) {
+    return (
+      <p className="card empty-state">
+        {result.data?.message || "No sentiment scores available."}
+      </p>
+    );
+  }
+
+  const labels = ["Negative", "Neutral", "Positive"];
+
+  return (
+    <section className="card" aria-label="Twitter sentiment scores">
+      <h2>Twitter sentiment for {stock.symbol}</h2>
+      {scores.map((score, index) => (
+        <p key={labels[index]}>
+          {labels[index]}: {(score * 100).toFixed(1)}%
+        </p>
+      ))}
+    </section>
+  );
+}
