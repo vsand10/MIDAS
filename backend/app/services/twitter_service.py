@@ -4,7 +4,7 @@ client = Client(bearer_token="AAAAAAAAAAAAAAAAAAAAALa4AAIAAAAAM1ANZ84OamgVKpokSJ
 
 # Search recent Posts
 for page in client.posts.search_recent(
-    query=f"(apple OR AAPL) lang:en min_likes:300 min_reposts:300 min_replies:300 is:verified -is:nullcast"
+    query="(apple OR AAPL) lang:en min_likes:300 min_reposts:300 min_replies:300 is:verified -is:nullcast"
 ):
     for post in page.data: # type: ignore
         print(post.text)

@@ -1,6 +1,6 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from scipy.special import softmax
 import torch
+from scipy.special import softmax
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # Load model and tokenizer
 MODEL = "cardiffnlp/twitter-roberta-base-sentiment"
