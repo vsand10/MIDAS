@@ -16,3 +16,8 @@ httpx
 requests
 Pygments
 
+transformers
+xdk
+torch
+scipy
+
