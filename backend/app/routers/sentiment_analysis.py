@@ -1,5 +1,6 @@
 import torch
 from fastapi import FastAPI
+from fastapi import APIRouter
 from scipy.special import softmax
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -11,6 +12,9 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 
 def analyze_sentiments(texts):
+    if not texts:
+        return None
+
     sentiments = []
     for text in texts:
         encoded_input = tokenizer(text, return_tensors='pt')
@@ -29,13 +33,18 @@ def analyze_sentiments(texts):
     res = [round(x, 3) for x in res]
     return res
 
-@sentiment_app.get("/")
+router = APIRouter(prefix="/api/sentiment", tags=["sentiment"])
+
+@router.get("/")
 def read_root():
     return {"message": "Welcome to the Sentiment Analysis API!"}
 
-@sentiment_app.get("/sentiment/twitter/{query}")
+@router.get("/twitter/{query}")
 def twitter_analysis(query: str):
-    import twitter_service
+    from app.services import twitter_service
+
     tweets = twitter_service.get_tweets(query)
-    sentiments = analyze_sentiments(tweets)
-    return {"sentiments": sentiments}
+    if not tweets:
+        return {"sentiments": None, "message": "No tweets found"}
+
+    return {"sentiments": analyze_sentiments(tweets)}

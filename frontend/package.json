@@ -26,5 +26,10 @@
     "eslint-plugin-react-refresh": "^0.5.6",
     "globals": "^17.12.0",
     "vite": "^8.3.0"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.3": true,
+    "fsevents@2.3.3": true,
+    "protobufjs@7.6.6": true
   }
 }
