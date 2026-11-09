@@ -345,9 +345,9 @@ function SentimentPanel({ stock }) {
 
   return (
     <section className="card" aria-label="Twitter sentiment scores">
-      <h2>Twitter sentiment for {stock.symbol}</h2>
+      <h2 className="header_name">Twitter sentiment for {stock.symbol}</h2>
       {scores.map((score, index) => (
-        <p key={labels[index]}>
+        <p className="header_para" key={labels[index]}>
           {labels[index]}: {(score * 100).toFixed(1)}%
         </p>
       ))}

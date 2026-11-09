@@ -206,3 +206,11 @@
   flex-direction: column;
   gap: 10px;
 }
+
+.header_name {
+  padding-left: 10px;
+}
+
+.header_para{
+  padding-left: 10px;
+}
