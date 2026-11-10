@@ -136,6 +136,9 @@ export default function StockDetailPage() {
       <div role="tabpanel" id={`panel-${slug(tab)}`} aria-labelledby={`tab-${slug(tab)}`}>
         {tab === "Overview" ? (
           <Overview stock={data} />
+          
+        ) : tab === "Why it moved" ? (
+          <WhyPreview symbol={symbol.toUpperCase()} name={data?.name} />
         ) : tab === "News" ? (
           <NewsPreview symbol={symbol.toUpperCase()} />
         ) : tab === "Sentiment" ? (
@@ -155,6 +158,38 @@ export default function StockDetailPage() {
     </main>
   );
 }
+
+/** "Why it moved" tab: a card that opens the Why screen and its AI chat */
+function WhyPreview({ symbol, name }) {
+  const shortName = (name || symbol).replace(
+    /,? (Inc\.?|Corp\.?|Corporation|Co\.|Ltd\.?|plc|Group|& Co\.)$/i,
+    ""
+  );
+  return (
+    <section className="section stock__section">
+      <Link to={`/stock/${symbol}/why`} state={{ name: shortName }} className="card stock__why">
+        <span className="stock__why-badge">AI</span>
+        <span className="stock__why-text">
+          <span className="stock__why-title">Why did {shortName} move?</span>
+          <span className="stock__why-subtitle">
+            See the key drivers and ask the AI follow-up questions
+          </span>
+        </span>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M9 5l7 7-7 7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </Link>
+    </section>
+  );
+}
+ 
 
 /** News tab: the 3 latest articles + a link to the full News screen */
 function NewsPreview({ symbol }) {

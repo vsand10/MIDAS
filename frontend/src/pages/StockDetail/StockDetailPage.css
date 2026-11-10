@@ -214,3 +214,59 @@
 .header_para{
   padding-left: 10px;
 }
+
+/* ---------- "Why it moved" tab ---------- */
+.stock__why {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+ 
+.stock__why:active {
+  background: #faf9f6;
+}
+ 
+.stock__why:focus-visible {
+  outline: 2px solid var(--midas-gold);
+  outline-offset: 2px;
+}
+ 
+.stock__why-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--midas-blue-tint, #e8eefb);
+  color: var(--midas-blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+ 
+.stock__why-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+ 
+.stock__why-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+ 
+.stock__why-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--midas-muted);
+}
+ 
+.stock__why svg {
+  flex-shrink: 0;
+  color: #9aa0b4;
+}

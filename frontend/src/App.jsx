@@ -11,6 +11,10 @@ import RequireAuth from "./auth/RequireAuth";
 import { signUp, logIn, logOut, resetPassword } from "./auth/authService";
 import WatchlistPage from "./pages/WatchList/WatchListPage";
 import NewsPage from "./pages/News/NewsPage";
+import WhyMovedPage from "./pages/WhyMoved/WhyMovedPage";
+import ChatPage from "./pages/Chat/ChatPage";
+
+
 
 function LoginRoute() {
   const navigate = useNavigate();
@@ -99,8 +103,26 @@ export default function App() {
             <Route path="/stock/:symbol" element={<StockDetailPage />} />
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/stock/:symbol/news" element={<NewsPage />} />
+            <Route path="/stock/:symbol/why" element={<WhyMovedPage />} />
             <Route path="/profile" element={<ProfileRoute />} />
           </Route>
+          {/* Logged-in, full-screen chat (no bottom nav, so the message box sits at the bottom) */}
+          <Route
+            path="/stock/:symbol/chat"
+            element={
+              <RequireAuth>
+                <ChatPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chat"
+            element={
+              <RequireAuth>
+                <ChatPage />
+              </RequireAuth>
+            }
+          />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

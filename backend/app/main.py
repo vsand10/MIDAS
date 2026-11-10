@@ -12,7 +12,7 @@ from app.routers import market, news
 from app.routers.sentiment_analysis import router as sentiment_router
 from app.services.alphavantage import quote_price, to_float
 from app.stock_detail import router as stock_detail_router
-
+from app.routers import chat
 load_dotenv()
 init_firebase()
 
@@ -27,6 +27,8 @@ app = FastAPI(title="MIDAS API")
 # Home market data and stock news routes (see app/routers)
 app.include_router(market.router)
 app.include_router(news.router)
+app.include_router(chat.router)
+
 
 # Default route that shows a message when MIDAS API is opened
 @app.get("/")
