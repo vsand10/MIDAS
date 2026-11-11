@@ -60,13 +60,13 @@ class ChatReply(BaseModel):
     sources: list[ChatSource] = Field(default_factory=list)
 
 @router.post("/chat", response_model=ChatReply)
-def chat(body: ChatRequest, user: dict = Depends(get_current_user)) -> ChatReply:
+async def chat(body: ChatRequest, user: dict = Depends(get_current_user)) -> ChatReply:
     _check_rate_limit(user["uid"])
 
     symbol = body.symbol.upper() if body.symbol else None
     history = [turn.model_dump() for turn in body.history]
     try:
-        result = chat_service.reply_to(body.message, history, symbol)
+        result = await chat_service.reply_to(body.message, history, symbol)
     except gemini.GeminiNotConfiguredError as err:
         log.error("MIDAS Chat is not configured: %s", err)
         raise HTTPException(503, "The AI assistant isn't set up yet.") from err
