@@ -5,7 +5,12 @@
             "symbol": "AAPL",                      # optional
             "history": [{"role": "user", "text": "..."},
                         {"role": "assistant", "text": "..."}]}   # optional, oldest first
-    reply: {"reply": "..."}
+    reply: {
+    "reply": "...",
+    "sources": [
+        {"title": "Example source", "url": "https://example.com"}
+    ]
+}
 
 The backend keeps no chat history: the app sends the conversation each time.
 """
@@ -45,10 +50,14 @@ class ChatRequest(BaseModel):
     symbol: Annotated[str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z.\-]{0,9}$")] | None = None
     history: list[ChatTurn] = Field(default_factory=list, max_length=MAX_HISTORY_ITEMS)
 
+class ChatSource(BaseModel):
+    title: str
+    url: str
+
 
 class ChatReply(BaseModel):
     reply: str
-
+    sources: list[ChatSource] = Field(default_factory=list)
 
 @router.post("/chat", response_model=ChatReply)
 def chat(body: ChatRequest, user: dict = Depends(get_current_user)) -> ChatReply:
@@ -57,7 +66,7 @@ def chat(body: ChatRequest, user: dict = Depends(get_current_user)) -> ChatReply
     symbol = body.symbol.upper() if body.symbol else None
     history = [turn.model_dump() for turn in body.history]
     try:
-        reply = chat_service.reply_to(body.message, history, symbol)
+        result = chat_service.reply_to(body.message, history, symbol)
     except gemini.GeminiNotConfiguredError as err:
         log.error("MIDAS Chat is not configured: %s", err)
         raise HTTPException(503, "The AI assistant isn't set up yet.") from err
@@ -68,7 +77,10 @@ def chat(body: ChatRequest, user: dict = Depends(get_current_user)) -> ChatReply
     except gemini.GeminiError as err:
         log.warning("MIDAS Chat failed: %s", err)
         raise HTTPException(502, "The AI assistant couldn't answer. Please try again.") from err
-    return ChatReply(reply=reply)
+    return ChatReply(
+        reply=result["reply"],
+        sources=result.get("sources", []),
+    )
 
 
 def _check_rate_limit(uid: str) -> None:

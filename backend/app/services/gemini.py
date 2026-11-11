@@ -2,7 +2,7 @@
 
 Settings, in backend/.env:
     GEMINI_API_KEY=...            (free key from https://aistudio.google.com/apikey)
-    GEMINI_MODEL=gemini-3.8-flash (optional; change here if Google retires the model)
+    GEMINI_MODEL=gemini-3.5-flash-lite 
 
 Gemini has no memory between requests, so every call sends the whole
 conversation: a list of turns, each {"role": "user" | "model", "parts": [{"text": ...}]}.
@@ -42,17 +42,32 @@ def _post(url: str, headers: dict, payload: dict) -> httpx.Response:
     return httpx.post(url, headers=headers, json=payload, timeout=TIMEOUT_SECONDS)
 
 
-def generate(system_instruction: str, contents: list[dict]) -> str:
-    """Sends the conversation to Gemini and returns its reply as plain text."""
+def generate(system_instruction: str, contents: list[dict]) -> dict:
+    """Sends the conversation to Gemini and returns its reply text plus sources."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise GeminiNotConfiguredError("GEMINI_API_KEY is not set")
     model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
 
     payload = {
-        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "systemInstruction": {
+            "parts": [
+                {
+                    "text": system_instruction
+                }
+            ]
+        },
         "contents": contents,
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": MAX_OUTPUT_TOKENS},
+        # Google Search grounding for current information
+        "tools": [
+            {
+                "google_search": {}
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.4,
+            "maxOutputTokens": MAX_OUTPUT_TOKENS,
+        },
     }
     try:
         # The key goes in a header, never in the URL, so it can't end up in logs
@@ -67,7 +82,10 @@ def generate(system_instruction: str, contents: list[dict]) -> str:
         data = response.json()
     except ValueError as err:
         raise GeminiError("Gemini sent a reply that wasn't JSON") from err
-    return _reply_text(data)
+    return {
+        "reply": _reply_text(data),
+        "sources": _sources(data),
+}
 
 
 def _raise_for_status(response: httpx.Response, model: str) -> None:
@@ -112,3 +130,63 @@ def _reply_text(data: dict) -> str:
             raise GeminiBlockedError(f"Reply blocked: {reason}")
         raise GeminiError(f"Gemini returned an empty answer (finishReason={reason})")
     return text
+
+
+def _sources(data: dict) -> list[dict]:
+    """Get web sources returned by Google Search grounding."""
+
+    candidates = data.get("candidates") or []
+
+    if not candidates:
+        return []
+
+    candidate = candidates[0]
+
+    metadata = (
+        candidate.get("groundingMetadata")
+        or {}
+    )
+
+    chunks = (
+        metadata.get("groundingChunks")
+        or []
+    )
+
+    sources = []
+    seen_urls = set()
+
+    for chunk in chunks:
+        web = (
+            chunk.get("web")
+            if isinstance(chunk, dict)
+            else None
+        )
+
+        if not isinstance(web, dict):
+            continue
+
+        url = str(
+            web.get("uri") or ""
+        ).strip()
+
+        if not url:
+            continue
+
+        # Prevent duplicate sources
+        if url in seen_urls:
+            continue
+
+        seen_urls.add(url)
+
+        title = str(
+            web.get("title") or "Source"
+        ).strip()
+
+        sources.append(
+            {
+                "title": title or "Source",
+                "url": url,
+            }
+        )
+
+    return sources

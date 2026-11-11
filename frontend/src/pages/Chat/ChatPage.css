@@ -102,6 +102,24 @@
   border-bottom-left-radius: 6px;
 }
 
+/* ---------- Sources button ---------- */
+.chat__sources {
+  display: block;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--midas-gold, #cda64a);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--midas-text, #2b2b2b);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat__sources:active {
+  background: #fbf8ef;
+}
+
 /* ---------- Suggested questions ---------- */
 .chat__suggestions {
   display: flex;
@@ -271,6 +289,7 @@
 
 .chat__new:focus-visible,
 .chat__suggestion:focus-visible,
+.chat__sources:focus-visible,
 .chat__send:focus-visible,
 .chat__error button:focus-visible {
   outline: 2px solid var(--midas-blue, #4a71cd);

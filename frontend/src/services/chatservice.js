@@ -15,7 +15,8 @@ const MAX_HISTORY_TURNS = 20; // the backend only uses the most recent turns any
  * @param {{role: "user"|"assistant", text: string}[]} [options.history]  earlier turns, oldest first
  * @param {string} [options.symbol]             stock being discussed, e.g. "AAPL"
  * @param {AbortSignal} [options.signal]        lets the screen cancel the request
- * @returns {Promise<string>} the assistant's reply
+ * @returns {Promise<{reply: string, sources: {title: string, url: string}[]}>}
+ * the assistant's reply and grounded sources
  */
 export async function sendChatMessage({ message, history = [], symbol, signal }) {
   const headers = { "Content-Type": "application/json" };
@@ -53,7 +54,10 @@ export async function sendChatMessage({ message, history = [], symbol, signal })
   if (typeof data?.reply !== "string" || !data.reply.trim()) {
     throw new Error("The AI assistant couldn't answer. Please try again.");
   }
-  return data.reply;
+  return {
+    reply: data.reply,
+    sources: Array.isArray(data.sources) ? data.sources : [],
+  };
 }
 
 /** Firebase login token for the signed-in user (null if not signed in) */

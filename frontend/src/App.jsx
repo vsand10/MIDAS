@@ -13,7 +13,7 @@ import WatchlistPage from "./pages/WatchList/WatchListPage";
 import NewsPage from "./pages/News/NewsPage";
 import WhyMovedPage from "./pages/WhyMoved/WhyMovedPage";
 import ChatPage from "./pages/Chat/ChatPage";
-
+import ChatSourcesPage from "./pages/ChatSources/ChatSourcesPage";
 
 
 function LoginRoute() {
@@ -120,6 +120,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <ChatPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/chat/sources"
+            element={
+              <RequireAuth>
+                <ChatSourcesPage />
               </RequireAuth>
             }
           />

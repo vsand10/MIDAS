@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import midasLogo from "../../assets/midas-logo.svg";
-import { sendChatMessage } from "../../services/chatService";
+import { sendChatMessage } from "../../services/chatservice";
 import "../../App.css";
 import "./ChatPage.css";
 
@@ -32,7 +32,7 @@ function Chat({ sym }) {
   const location = useLocation();
   const name = location.state?.name || sym;
 
-  // Each message: { id, role: "user" | "assistant", text }
+  // Each message: { id, role: "user" | "assistant", text, sources? }
   const [messages, setMessages] = useState(() => savedChats.get(chatKey) ?? []);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -62,13 +62,13 @@ function Chat({ sym }) {
     setSending(true);
     setError("");
     try {
-      const reply = await sendChatMessage({
+      const result = await sendChatMessage({
         message: last.text,
         history: all.slice(0, -1).map(({ role, text }) => ({ role, text })),
         symbol: sym,
         signal: controller.signal,
       });
-      setMessages((current) => [...current, { id: newId(), role: "assistant", text: reply }]);
+      setMessages((current) => [...current, { id: newId(), role: "assistant", text: result.reply, sources: result.sources }]);
     } catch (err) {
       if (err.name !== "AbortError") {
         setError(err.message || "The AI assistant couldn't answer. Please try again.");
@@ -118,6 +118,19 @@ function Chat({ sym }) {
     else navigate(sym ? `/stock/${sym}/why` : "/home");
   };
 
+  const openSources = (messageIndex) => {
+    const message = messages[messageIndex];
+
+    navigate("/chat/sources", {
+      state: {
+        sources: message.sources || [],
+        question:
+          messageIndex > 0 && messages[messageIndex - 1]?.role === "user"
+            ? messages[messageIndex - 1].text
+            : "",
+      },
+    });
+  };
   const greeting = sym
     ? `Hi! I'm MIDAS. Ask me anything about ${name}, like what the company does or what's been in the news.`
     : "Hi! I'm MIDAS. Ask me about a stock, the market or an investing term.";
@@ -170,13 +183,25 @@ function Chat({ sym }) {
           </div>
         )}
 
-        {messages.map((m) =>
+        {messages.map((m, index) =>
           m.role === "user" ? (
             <div className="chat__row chat__row--user" key={m.id}>
               <p className="chat__bubble chat__bubble--user">{m.text}</p>
             </div>
           ) : (
-            <AssistantMessage key={m.id}>{cleanReply(m.text)}</AssistantMessage>
+            <AssistantMessage key={m.id}>
+              {cleanReply(m.text)}
+
+              {m.sources?.length > 0 && (
+                <button
+                  type="button"
+                  className="chat__sources"
+                  onClick={() => openSources(index)}
+                >
+                  Sources ({m.sources.length})
+                </button>
+              )}
+            </AssistantMessage>
           )
         )}
 
