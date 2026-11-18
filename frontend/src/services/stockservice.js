@@ -299,6 +299,46 @@ export async function getNews(symbol, limit = 20) {
   return mockNews(sym).slice(0, limit);
 }
 
+/**
+ * The "Why did X move?" screen. Returns
+ * { status: "ok" | "insufficient", summary, message, changePercent, generatedAt,
+ *   drivers[]: { title, description, source },
+ *   driversMessage,
+ *   comparison: { indexes[]: { name, changePercent }, sector: { name, etf, changePercent } | null } | null,
+ *   sources[]: { title, source, url, publishedAt } }
+ * The AI result is made on the server and saved there for 30 minutes.
+ */
+export async function getWhyItMoved(symbol) {
+  const sym = symbol.toUpperCase();
+  if (!USE_MOCK_DATA) {
+    return getJson(`/stocks/${encodeURIComponent(sym)}/why-moved`);
+  }
+  await wait(600);
+  const source = {
+    title: `${sym} announces new product`,
+    source: "Sample News",
+    url: "https://example.com",
+    publishedAt: new Date().toISOString(),
+  };
+  return {
+    status: "ok",
+    summary: `${sym} moved after a company announcement. This is sample text.`,
+    message: null,
+    changePercent: 1.2,
+    drivers: [
+      { title: "New product", description: "A new product was announced.", source },
+      { title: "Analyst upgrade", description: "An analyst raised the rating.", source },
+    ],
+    driversMessage: null,
+    comparison: {
+      indexes: [{ name: "S&P 500", changePercent: 0.4 }],
+      sector: { name: "Technology", etf: "XLK", changePercent: 1.1 },
+    },
+    sources: [source],
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 // ---------------- Recent searches (kept on this device) ----------------
 const RECENT_KEY = "midas_recent_searches";
 

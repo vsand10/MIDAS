@@ -5,8 +5,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.deps import get_current_user
-from app.routers import market, news
-from app.services import alphavantage, market_service, news_service
+from app.routers import market, news, why
+from app.services import alphavantage, gemini, market_service, news_service, why_service
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +14,7 @@ def clear_caches():
     """Each test starts with empty caches so results never leak between tests."""
     market_service._cache.clear()
     news_service._cache.clear()
+    why_service._cache.clear()
     alphavantage._listing_cache.clear()
 
 
@@ -24,7 +25,13 @@ def no_real_network(monkeypatch):
     def refuse(params):
         raise AssertionError("A test tried to call Alpha Vantage for real")
 
+    def refuse_gemini(url, headers, payload):
+        raise AssertionError("A test tried to call Gemini for real")
+
     monkeypatch.setattr(alphavantage, "_send", refuse)
+    monkeypatch.setattr(gemini, "_post", refuse_gemini)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-ai-key")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.setenv("ALPHA_VANTAGE_API_KEY", "test-key")
     monkeypatch.delenv("ALPHA_VANTAGE_ENTITLEMENT", raising=False)
 
@@ -34,6 +41,7 @@ def app():
     app = FastAPI()
     app.include_router(market.router)
     app.include_router(news.router)
+    app.include_router(why.router)
     return app
 
 

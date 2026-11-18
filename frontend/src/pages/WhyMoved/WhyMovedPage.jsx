@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAsync } from "../../hooks/useAsync";
-import { getStock } from "../../services/stockservice";
+import { getStock, getWhyItMoved } from "../../services/stockservice";
+import { comparisonItems, formatChange, sourceCount, sourceLine } from "./sourceFormat";
 import "./WhyMovedPage.css";
 
 
@@ -14,6 +15,12 @@ export default function WhyMovedPage() {
   // Only used for the company name in the titles; the page works without it
   const stock = useAsync(() => getStock(sym).catch(() => null), [sym]);
   const name = shortName(stock.data?.name || location.state?.name) || sym;
+
+   // One request fills the summary, key drivers and sources (the server saves it for 30 minutes)
+  const why = useAsync(() => getWhyItMoved(sym), [sym]);
+  const result = why.data;
+  const ok = result?.status === "ok";
+  const compare = ok ? comparisonItems(result.comparison) : [];
 
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate(`/stock/${sym}`));
 
@@ -35,7 +42,7 @@ export default function WhyMovedPage() {
 
       <h1 className="page-title why__title">Why did {name} move?</h1>
 
-      {/* ---------- AI Summary (placeholder) ---------- */}
+      {/* ---------- AI Summary ---------- */}
       <section className="why__summary" aria-labelledby="why-summary-title">
         <div className="why__summary-header">
           <h2 id="why-summary-title" className="why__summary-label">
@@ -43,10 +50,45 @@ export default function WhyMovedPage() {
           </h2>
           <span className="why__badge">AI-generated</span>
         </div>
-        {/* TODO (AI Summary): replace this paragraph with the generated summary for `sym` */}
-        <p className="why__placeholder-text">
-          The AI summary for {name} is coming soon.
-        </p>
+        {why.loading && !result ? (
+          <p className="why__placeholder-text" aria-busy="true">
+            Writing the summary for {name}…
+          </p>
+        ) : why.error ? (
+          <div role="alert">
+            <p className="why__placeholder-text">
+              {why.error.message || "Couldn't load the explanation."}
+            </p>
+            <button type="button" className="why__retry" onClick={why.reload}>
+              Try again
+            </button>
+          </div>
+        ) : ok ? (
+          <>
+            <p className="why__summary-text">{result.summary}</p>
+            {compare.length > 0 && (
+              <div className="why__compare" aria-label="How the market moved today">
+                <span className="why__compare-label">
+                  {sym} {formatChange(result.changePercent)} vs
+                </span>
+                <ul className="why__compare-list">
+                  {compare.map((c) => (
+                    <li
+                      key={c.label}
+                      className={`why__chip ${c.change >= 0 ? "why__chip--up" : "why__chip--down"}`}
+                    >
+                      {c.label} {formatChange(c.change)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="why__placeholder-text">
+            {result.message || "Not enough information to explain this move"}
+          </p>
+        )}
       </section>
 
       {/* ---------- Chat with AI ---------- */}
@@ -84,30 +126,46 @@ export default function WhyMovedPage() {
         </svg>
       </Link>
 
-      {/* ---------- Key Drivers (placeholder) ---------- */}
+      {/* ---------- Key Drivers ---------- */}
       <section className="why__drivers" aria-labelledby="why-drivers-title">
         <h2 id="why-drivers-title" className="why__section-label">
           Key Drivers
         </h2>
-        {/* TODO (Key Drivers): replace with one .why__driver card per driver:
-              <article className="why__driver">
-                <h3 className="why__driver-title">Product event anticipation</h3>
-                <p className="why__driver-text">...</p>
-              </article>
-        */}
-        <article className="why__driver why__driver--placeholder">
-          <h3 className="why__driver-title">Key drivers are coming soon</h3>
-          <p className="why__driver-text">
-            The main reasons behind {name}&apos;s latest move will be listed here.
-          </p>
-        </article>
+        {why.loading && !result ? (
+          <article className="why__driver why__driver--placeholder" aria-busy="true">
+            <p className="why__driver-text">Looking for the main drivers…</p>
+          </article>
+        ) : why.error ? null : ok && result.drivers.length > 0 ? (
+          result.drivers.map((d, i) => (
+            <a
+              key={`${i}-${d.title}`}
+              className="why__driver why__driver--link"
+              href={d.source.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <h3 className="why__driver-title">{d.title}</h3>
+              <p className="why__driver-text">{d.description}</p>
+              <span className="why__driver-source">
+                {d.source.title} · {sourceLine(d.source)}
+              </span>
+            </a>
+          ))
+        ) : (
+          <article className="why__driver why__driver--placeholder">
+            <h3 className="why__driver-title">
+              {(ok && result.driversMessage) || "No key drivers identified"}
+            </h3>
+          </article>
+        )}
       </section>
 
-      {/* ---------- Sources (placeholder) ---------- */}
-      {/* TODO (Sources): show the real count ("5 sources") and open the Sources screen */}
-      <button type="button" className="why__sources" disabled>
-        Sources coming soon
-      </button>
+      {/* ---------- Sources ---------- */}
+      {ok && result.sources.length > 0 && (
+        <Link to={`/stock/${sym}/why/sources`} state={{ name }} className="why__sources">
+          {sourceCount(result.sources.length)}
+        </Link>
+      )}
     </main>
   );
 }

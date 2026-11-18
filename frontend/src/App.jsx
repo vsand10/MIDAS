@@ -12,6 +12,7 @@ import { signUp, logIn, logOut, resetPassword } from "./auth/authService";
 import WatchlistPage from "./pages/WatchList/WatchListPage";
 import NewsPage from "./pages/News/NewsPage";
 import WhyMovedPage from "./pages/WhyMoved/WhyMovedPage";
+import SourcesPage from "./pages/WhyMoved/SourcesPage";
 import ChatPage from "./pages/Chat/ChatPage";
 import ChatSourcesPage from "./pages/ChatSources/ChatSourcesPage";
 
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/stock/:symbol/news" element={<NewsPage />} />
             <Route path="/stock/:symbol/why" element={<WhyMovedPage />} />
+            <Route path="/stock/:symbol/why/sources" element={<SourcesPage />} />
             <Route path="/profile" element={<ProfileRoute />} />
           </Route>
           {/* Logged-in, full-screen chat (no bottom nav, so the message box sits at the bottom) */}

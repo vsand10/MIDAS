@@ -8,7 +8,7 @@ from google.cloud import firestore
 from pydantic import BaseModel
 
 from app.deps import get_current_user, init_firebase
-from app.routers import chat, market, news
+from app.routers import chat, market, news, why
 from app.routers.sentiment_analysis import router as sentiment_router
 from app.services.alphavantage import quote_price, to_float
 from app.stock_detail import router as stock_detail_router
@@ -28,6 +28,7 @@ app = FastAPI(title="MIDAS API")
 app.include_router(market.router)
 app.include_router(news.router)
 app.include_router(chat.router)
+app.include_router(why.router)
 
 
 # Default route that shows a message when MIDAS API is opened

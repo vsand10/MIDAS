@@ -42,33 +42,38 @@ def _post(url: str, headers: dict, payload: dict) -> httpx.Response:
     return httpx.post(url, headers=headers, json=payload, timeout=TIMEOUT_SECONDS)
 
 
-def generate(system_instruction: str, contents: list[dict]) -> dict:
-    """Sends the conversation to Gemini and returns its reply text plus sources."""
+def generate(
+    system_instruction: str, 
+    contents: list[dict],
+    *,
+    grounded: bool = True,
+    json_output: bool = False,
+) -> dict:
+    """Sends the conversation to Gemini and returns its reply text plus sources.
+    
+    grounded=True lets Gemini use Google Search (MIDAS Chat). "Why it moved" passes
+    grounded=False, because it may only use the news articles MIDAS gives it, and
+    json_output=True, which asks for a JSON reply.
+    """
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise GeminiNotConfiguredError("GEMINI_API_KEY is not set")
     model = os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
 
-    payload = {
-        "systemInstruction": {
-            "parts": [
-                {
-                    "text": system_instruction
-                }
-            ]
-        },
-        "contents": contents,
-        # Google Search grounding for current information
-        "tools": [
-            {
-                "google_search": {}
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.4,
-            "maxOutputTokens": MAX_OUTPUT_TOKENS,
-        },
+    config = {
+        "temperature": 0.4,
+        "maxOutputTokens": MAX_OUTPUT_TOKENS,
     }
+    if json_output:
+        config["responseMimeType"] = "application/json"
+    payload = {
+        "systemInstruction": {"parts": [{"text": system_instruction}]},
+        "contents": contents,
+        "generationConfig": config,
+    }
+    if grounded:
+        # Google Search grounding for current information
+        payload["tools"] = [{"google_search": {}}]
     try:
         # The key goes in a header, never in the URL, so it can't end up in logs
         response = _post(API_URL.format(model=model), {"x-goog-api-key": api_key}, payload)
