@@ -270,3 +270,98 @@
   flex-shrink: 0;
   color: #9aa0b4;
 }
+
+/* ---------- AI summary card on the "Why it moved" tab ---------- */
+.stock__ai {
+  margin-bottom: 12px;
+  padding: 14px;
+  background: #f1f4fb;
+  border-color: #cfd9f3;
+}
+
+.stock__ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.stock__ai-label {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--midas-blue);
+}
+
+.stock__ai-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--midas-blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stock__ai-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.stock__ai-muted {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--midas-muted);
+}
+
+.stock__ai-retry {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--midas-blue);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--midas-blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stock__ai-compare {
+  margin-top: 12px;
+}
+
+.stock__ai-compare-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  color: var(--midas-muted);
+}
+
+.stock__ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stock__ai-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #cfd9f3;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stock__ai-chip--up {
+  color: #1f7a45;
+}
+
+.stock__ai-chip--down {
+  color: #b3341f;
+}

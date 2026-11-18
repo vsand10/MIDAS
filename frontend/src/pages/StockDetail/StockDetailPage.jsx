@@ -16,8 +16,10 @@ import {
   isInWatchlist,
   removeFromWatchlist,
   getTwitterSentiment,
+  getWhyItMoved,
 } from "../../services/stockservice";
 import { formatCompact, formatMoneyCompact, formatPrice } from "../../utils/format";
+import { comparisonItems, formatChange } from "../WhyMoved/sourceFormat";
 import "./StockDetailPage.css";
 
 const TABS = ["Overview", "Why it moved", "News", "Sentiment"];
@@ -159,20 +161,76 @@ export default function StockDetailPage() {
   );
 }
 
-/** "Why it moved" tab: a card that opens the Why screen and its AI chat */
+/** "Why it moved" tab: the AI summary, plus a card that opens the full Why screen */
 function WhyPreview({ symbol, name }) {
   const shortName = (name || symbol).replace(
     /,? (Inc\.?|Corp\.?|Corporation|Co\.|Ltd\.?|plc|Group|& Co\.)$/i,
     ""
   );
+  // The server saves this result for 30 minutes, so the Why screen reuses it instantly
+  const why = useAsync(() => getWhyItMoved(symbol), [symbol]);
+  const result = why.data;
+  const ok = result?.status === "ok";
+  const compare = ok ? comparisonItems(result.comparison) : [];
+
   return (
     <section className="section stock__section">
-      <Link to={`/stock/${symbol}/why`} state={{ name: shortName }} className="card stock__why">
+      <div className="card stock__ai">
+        <div className="stock__ai-header">
+          <h2 className="stock__ai-label">AI Summary</h2>
+          <span className="stock__ai-badge">AI-generated</span>
+        </div>
+        {why.loading && !result ? (
+          <p className="stock__ai-muted" aria-busy="true">
+            Writing the summary for {shortName}…
+          </p>
+        ) : why.error ? (
+          <div role="alert">
+            <p className="stock__ai-muted">
+              {why.error.message || "Couldn't load the explanation."}
+            </p>
+            <button type="button" className="stock__ai-retry" onClick={why.reload}>
+              Try again
+            </button>
+          </div>
+        ) : ok ? (
+          <>
+            <p className="stock__ai-text">{result.summary}</p>
+            {compare.length > 0 && (
+              <div className="stock__ai-compare" aria-label="How the market moved today">
+                <span className="stock__ai-compare-label">
+                  {symbol} {formatChange(result.changePercent)} vs
+                </span>
+                <ul className="stock__ai-chips">
+                  {compare.map((c) => (
+                    <li
+                      key={c.label}
+                      className={`stock__ai-chip ${c.change >= 0 ? "stock__ai-chip--up" : "stock__ai-chip--down"}`}
+                    >
+                      {c.label} {formatChange(c.change)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="stock__ai-muted">
+            {result.message || "Not enough information to explain this move"}
+          </p>
+        )}
+      </div>
+
+      <Link
+        to={`/stock/${symbol}/why`}
+        state={{ name: shortName }}
+        className="card stock__why"
+      >
         <span className="stock__why-badge">AI</span>
         <span className="stock__why-text">
           <span className="stock__why-title">Why did {shortName} move?</span>
           <span className="stock__why-subtitle">
-            See the key drivers and ask the AI follow-up questions
+            See the key drivers, sources and ask the AI follow-up questions
           </span>
         </span>
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -190,7 +248,6 @@ function WhyPreview({ symbol, name }) {
   );
 }
  
-
 /** News tab: the 3 latest articles + a link to the full News screen */
 function NewsPreview({ symbol }) {
   const news = useAsync(() => getNews(symbol, 3), [symbol]);
