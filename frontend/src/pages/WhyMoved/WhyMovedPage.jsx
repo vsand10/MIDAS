@@ -48,7 +48,12 @@ export default function WhyMovedPage() {
           <h2 id="why-summary-title" className="why__summary-label">
             AI Summary
           </h2>
-          <span className="why__badge">AI-generated</span>
+          <span className="why__badges">
+            <span className="why__badge">AI-generated</span>
+            {ok && result.origin === "web" && (
+              <span className="why__badge why__badge--web">Web search</span>
+            )}
+          </span>
         </div>
         {why.loading && !result ? (
           <p className="why__placeholder-text" aria-busy="true">
@@ -66,11 +71,6 @@ export default function WhyMovedPage() {
         ) : ok ? (
           <>
             <p className="why__summary-text">{result.summary}</p>
-            {result.origin === "web" && (
-              <p className="why__note">
-                Based on recent web coverage found through Google Search.
-              </p>
-            )}
             {compare.length > 0 && (
               <div className="why__compare" aria-label="How the market moved today">
                 <span className="why__compare-label">

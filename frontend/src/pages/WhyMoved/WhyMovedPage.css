@@ -36,6 +36,19 @@
   white-space: nowrap;
 }
 
+.why__badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.why__badge--web {
+  background: transparent;
+  color: var(--midas-blue, #4a71cd);
+  box-shadow: inset 0 0 0 1px var(--midas-blue, #4a71cd);
+}
+
 .why__placeholder-text {
   margin: 0;
   font-size: 15px;
@@ -178,17 +191,6 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
-}
-
-.why__note {
-  margin-top: 10px;
-  padding: 6px 14px;
-  border: 1.5px solid var(--midas-muted, #6b6b6b);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--midas-muted, #6b6b6b);
-  font-size: 13px;
-  font-weight: 600;
 }
 
 .why__retry {

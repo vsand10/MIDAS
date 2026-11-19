@@ -178,7 +178,12 @@ function WhyPreview({ symbol, name }) {
       <div className="card stock__ai">
         <div className="stock__ai-header">
           <h2 className="stock__ai-label">AI Summary</h2>
-          <span className="stock__ai-badge">AI-generated</span>
+          <span className="stock__ai-badges">
+            <span className="stock__ai-badge">AI-generated</span>
+            {ok && result.origin === "web" && (
+              <span className="stock__ai-badge stock__ai-badge--web">Web search</span>
+            )}
+          </span>
         </div>
         {why.loading && !result ? (
           <p className="stock__ai-muted" aria-busy="true">
@@ -196,11 +201,6 @@ function WhyPreview({ symbol, name }) {
         ) : ok ? (
           <>
             <p className="stock__ai-text">{result.summary}</p>
-            {result.origin === "web" && (
-              <p className="stock__ai-note">
-                Based on recent web coverage found through Google Search.
-              </p>
-            )}
             {compare.length > 0 && (
               <div className="stock__ai-compare" aria-label="How the market moved today">
                 <span className="stock__ai-compare-label">
