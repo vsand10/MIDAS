@@ -35,8 +35,20 @@ def driver(title="Record earnings", description="Profit beat forecasts.", articl
 class FakeAI:
     """Stands in for the AI service and remembers what it was asked."""
 
-    def __init__(self, answer=None):
+    def __init__(
+        self,
+        answer=None,
+        web_answer="INSUFFICIENT",
+        web_sources=(),
+        web_citations=(),
+        web_answers=(),
+    ):
         self.answer = answer if answer is not None else reply()
+        # What Google Search finds when the news articles are not enough (grounded calls)
+        self.web_answer = web_answer
+        self.web_sources = list(web_sources)
+        self.web_citations = list(web_citations)  # which source backs which words
+        self.web_answers = list(web_answers)  # answers for the 1st, 2nd... web try, then web_answer
         self.calls = []
 
     def __call__(self, system, contents, *, grounded=True, json_output=False):
@@ -44,6 +56,13 @@ class FakeAI:
         self.calls.append(
             {"system": system, "prompt": prompt, "json_output": json_output, "grounded": grounded}
         )
+        if grounded:
+            reply_text = self.web_answers.pop(0) if self.web_answers else self.web_answer
+            return {
+                "reply": reply_text,
+                "sources": self.web_sources,
+                "citations": self.web_citations,
+            }
         return {"reply": self.answer, "sources": []}
 
 
@@ -60,6 +79,7 @@ COMPARISON = {
 def setup(monkeypatch, *, articles, ai=None, price=110.0, previous=100.0, comparison=COMPARISON):
     ai = ai or FakeAI()
     monkeypatch.setattr(why_service, "market_comparison", lambda symbol: comparison)
+    monkeypatch.setattr(why_service, "company_name", lambda symbol: "Apple Inc")
     monkeypatch.setattr(
         market_service, "_fetch_quotes", lambda symbols: [quote(s, price, previous) for s in symbols]
     )
@@ -124,20 +144,20 @@ def test_old_articles_are_not_sent_to_the_ai(monkeypatch):
 # ---------------- WHY-01 AC 2: not enough data ----------------
 
 
-def test_no_news_means_not_enough_information_and_no_ai_call(monkeypatch):
+def test_no_news_and_no_web_result_means_not_enough_information(monkeypatch):
     ai = setup(monkeypatch, articles=[])
     result = why_service.get_why_it_moved("AAPL")
 
     assert result["status"] == "insufficient"
     assert result["message"] == "Not enough information to explain this move"
     assert result["summary"] is None
-    assert ai.calls == []
+    assert [c["grounded"] for c in ai.calls] == [True, True]  # the web search, tried twice
 
 
 def test_only_old_news_counts_as_no_news(monkeypatch):
     ai = setup(monkeypatch, articles=[article("Ancient story", hours_ago=200)])
     assert why_service.get_why_it_moved("AAPL")["status"] == "insufficient"
-    assert ai.calls == []
+    assert [c["grounded"] for c in ai.calls] == [True, True]
 
 
 def test_ai_saying_insufficient_shows_the_same_message(monkeypatch):
@@ -150,6 +170,426 @@ def test_ai_saying_insufficient_shows_the_same_message(monkeypatch):
 def test_empty_summary_is_not_shown(monkeypatch):
     setup(monkeypatch, articles=[article("News")], ai=FakeAI(reply(summary="   ")))
     assert why_service.get_why_it_moved("AAPL")["status"] == "insufficient"
+
+
+# ---------------- Web fallback: Google Search when the news is not enough ----------------
+
+WEB_SOURCES = [
+    {"title": "reuters.com", "url": "https://vertexaisearch.example/a"},
+    {"title": "cnbc.com", "url": "https://vertexaisearch.example/b"},
+]
+WEB_SUMMARY = "Shares rose after the company raised its forecast."
+
+
+def test_news_that_explains_the_move_never_uses_web_search(monkeypatch):
+    ai = setup(monkeypatch, articles=[article("Record earnings")])
+    result = why_service.get_why_it_moved("AAPL")
+
+    assert result["origin"] == "articles"
+    assert [c["grounded"] for c in ai.calls] == [False]
+
+
+def test_no_news_falls_back_to_web_search(monkeypatch):
+    ai = setup(
+        monkeypatch,
+        articles=[],
+        ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES),
+    )
+    result = why_service.get_why_it_moved("AAPL")
+
+    assert result["status"] == "ok"
+    assert result["origin"] == "web"
+    assert result["summary"] == WEB_SUMMARY
+    assert result["comparison"] == COMPARISON
+    assert result["drivers"] == []
+    assert result["driversMessage"] == "No key drivers identified"
+    assert ai.calls[0]["grounded"] is True
+    assert ai.calls[0]["json_output"] is False  # Gemini cannot search and reply in JSON together
+
+
+def test_web_sources_look_like_article_sources(monkeypatch):
+    setup(monkeypatch, articles=[], ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES))
+    sources = why_service.get_why_it_moved("AAPL")["sources"]
+
+    assert sources == [
+        {
+            "title": "reuters.com",
+            "source": "Web search",
+            "url": "https://vertexaisearch.example/a",
+            "publishedAt": None,
+        },
+        {
+            "title": "cnbc.com",
+            "source": "Web search",
+            "url": "https://vertexaisearch.example/b",
+            "publishedAt": None,
+        },
+    ]
+
+
+def test_ai_saying_insufficient_about_the_news_tries_web_search(monkeypatch):
+    ai = setup(
+        monkeypatch,
+        articles=[article("Unrelated")],
+        ai=FakeAI('{"insufficient": true}', web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES),
+    )
+    result = why_service.get_why_it_moved("AAPL")
+
+    assert result["origin"] == "web"
+    assert [c["grounded"] for c in ai.calls] == [False, True]
+
+
+def test_web_search_that_finds_no_reason_is_not_enough_information(monkeypatch):
+    setup(
+        monkeypatch,
+        articles=[],
+        ai=FakeAI(web_answer="INSUFFICIENT.", web_sources=WEB_SOURCES),
+    )
+    assert why_service.get_why_it_moved("AAPL")["status"] == "insufficient"
+
+
+def test_web_summary_without_sources_is_not_shown(monkeypatch):
+    setup(monkeypatch, articles=[], ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=[]))
+    assert why_service.get_why_it_moved("AAPL")["status"] == "insufficient"
+
+
+def test_web_summary_is_cut_to_three_sentences(monkeypatch):
+    setup(
+        monkeypatch,
+        articles=[],
+        ai=FakeAI(web_answer="One. Two. Three. Four.", web_sources=WEB_SOURCES),
+    )
+    assert why_service.get_why_it_moved("AAPL")["summary"] == "One. Two. Three."
+
+
+def test_at_most_five_web_sources_are_listed(monkeypatch):
+    many = [{"title": f"site{i}.com", "url": f"https://example.com/{i}"} for i in range(8)]
+    setup(monkeypatch, articles=[], ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=many))
+    assert len(why_service.get_why_it_moved("AAPL")["sources"]) == 5
+
+
+def test_a_failed_web_search_is_not_an_error(monkeypatch):
+    class WebDown(FakeAI):
+        def __call__(self, system, contents, *, grounded=True, json_output=False):
+            if grounded:
+                raise gemini.GeminiRateLimitedError("busy")
+            return super().__call__(system, contents, grounded=grounded, json_output=json_output)
+
+    setup(monkeypatch, articles=[], ai=WebDown())
+    result = why_service.get_why_it_moved("AAPL")
+    assert result["status"] == "insufficient"
+
+
+def test_web_prompt_has_the_move_and_the_market_but_no_articles(monkeypatch):
+    ai = setup(monkeypatch, articles=[], ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES))
+    why_service.get_why_it_moved("AAPL")
+    prompt = ai.calls[0]["prompt"]
+
+    assert "Stock ticker: AAPL" in prompt
+    assert "up 10.00%" in prompt
+    assert "S&P 500: +0.42%" in prompt
+    assert "<articles>" not in prompt
+
+
+def test_web_system_prompt_says_how_to_give_up_and_what_not_to_use():
+    assert '{"insufficient": true}' in why_service.WEB_SYSTEM_PROMPT
+    assert "NOT a news source" in why_service.WEB_SYSTEM_PROMPT
+
+
+def test_web_result_is_saved_too(monkeypatch):
+    ai = setup(monkeypatch, articles=[], ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES))
+    why_service.get_why_it_moved("AAPL")
+    why_service.get_why_it_moved("AAPL")
+    assert len(ai.calls) == 1
+
+
+# ---------------- Key drivers from the web search ----------------
+
+
+def web_reply(summary=WEB_SUMMARY, drivers=None):
+    return json.dumps({"summary": summary, "drivers": drivers or []})
+
+
+def web_driver(title="Raised forecast", description="The company raised its yearly forecast.", site=""):
+    return {"title": title, "description": description, "site": site}
+
+
+CITATIONS = [
+    {"text": "The company raised its yearly forecast.", "urls": ["https://vertexaisearch.example/a"]},
+    {"text": "A big customer signed a new deal.", "urls": ["https://vertexaisearch.example/b"]},
+]
+TWO_DRIVERS = [
+    web_driver(),
+    web_driver("New customer deal", "A big customer signed a new deal."),
+]
+
+
+def web_result(monkeypatch, *, answer, citations=CITATIONS, sources=WEB_SOURCES):
+    setup(
+        monkeypatch,
+        articles=[],
+        ai=FakeAI(web_answer=answer, web_sources=sources, web_citations=citations),
+    )
+    return why_service.get_why_it_moved("AAPL")
+
+
+def test_web_search_is_tried_again_when_the_first_try_finds_nothing(monkeypatch):
+    ai = setup(
+        monkeypatch,
+        articles=[],
+        ai=FakeAI(
+            web_answers=["INSUFFICIENT", WEB_SUMMARY],
+            web_sources=WEB_SOURCES,
+        ),
+    )
+    result = why_service.get_why_it_moved("AAPL")
+
+    assert result["status"] == "ok"
+    assert result["origin"] == "web"
+    assert [c["grounded"] for c in ai.calls] == [True, True]
+
+
+def test_a_try_with_a_summary_but_no_sources_is_also_repeated(monkeypatch):
+    class NoSourcesFirst(FakeAI):
+        def __call__(self, system, contents, *, grounded=True, json_output=False):
+            out = super().__call__(system, contents, grounded=grounded, json_output=json_output)
+            if grounded and len(self.calls) == 1:
+                out["sources"] = []
+            return out
+
+    ai = setup(
+        monkeypatch,
+        articles=[],
+        ai=NoSourcesFirst(web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES),
+    )
+    assert why_service.get_why_it_moved("AAPL")["status"] == "ok"
+    assert len(ai.calls) == 2
+
+
+def test_a_gemini_error_is_not_tried_again(monkeypatch):
+    setup(monkeypatch, articles=[])
+    tries = []
+
+    def broken(system, contents, *, grounded=True, json_output=False):
+        tries.append(grounded)
+        raise gemini.GeminiRateLimitedError("busy")
+
+    monkeypatch.setattr(gemini, "generate", broken)
+    assert why_service.get_why_it_moved("AAPL")["status"] == "insufficient"
+    assert tries == [True]
+
+
+def test_web_prompt_names_the_company_when_known(monkeypatch):
+    ai = setup(monkeypatch, articles=[], ai=FakeAI(web_answer=WEB_SUMMARY, web_sources=WEB_SOURCES))
+    why_service.get_why_it_moved("AAPL")
+    assert "Company name: Apple Inc" in ai.calls[0]["prompt"]
+
+
+def test_web_prompt_works_without_a_company_name():
+    prompt = why_service.build_web_prompt("AAPL", 2.5)
+    assert "Company name" not in prompt
+    assert "Stock ticker: AAPL" in prompt
+
+
+def test_web_prompt_accepts_sector_and_market_wide_reasons():
+    assert "sector" in why_service.WEB_SYSTEM_PROMPT
+    assert "whole market" in why_service.WEB_SYSTEM_PROMPT
+
+
+def test_company_name_and_sector_come_from_one_lookup(monkeypatch):
+    lookups = []
+
+    def overview(function, **params):
+        lookups.append(function)
+        return {"Name": "Exxon Mobil Corp", "Sector": "Energy"}
+
+    monkeypatch.setattr(why_service, "av_get", overview)
+    assert why_service.company_name("XOM") == "Exxon Mobil Corp"
+    assert why_service._company_sector("XOM") == "ENERGY"
+    assert lookups == ["OVERVIEW"]
+
+
+def test_company_name_is_none_when_alpha_vantage_is_down(monkeypatch):
+    def down(function, **params):
+        raise DataUnavailableError("down")
+
+    monkeypatch.setattr(why_service, "av_get", down)
+    assert why_service.company_name("XOM") is None
+
+
+def test_web_drivers_are_matched_to_sources_by_googles_citations(monkeypatch):
+    result = web_result(monkeypatch, answer=web_reply(drivers=TWO_DRIVERS))
+
+    assert [d["title"] for d in result["drivers"]] == ["Raised forecast", "New customer deal"]
+    assert result["drivers"][0]["source"]["url"] == "https://vertexaisearch.example/a"
+    assert result["drivers"][1]["source"]["url"] == "https://vertexaisearch.example/b"
+    assert result["drivers"][0]["source"]["source"] == "Web search"
+    assert result["driversMessage"] is None
+    assert result["summary"] == WEB_SUMMARY
+
+
+def test_web_drivers_are_matched_by_shared_words_when_googles_text_is_different(monkeypatch):
+    # Like a real reply: Google cited one sentence of the summary, backed by two sources
+    citations = [
+        {
+            "text": "The decline was driven by tumbling global crude oil prices, rising domestic "
+            "fuel inventories, and post-ex-dividend selling pressure.",
+            "urls": ["https://vertexaisearch.example/a", "https://vertexaisearch.example/b"],
+        }
+    ]
+    drivers = [
+        web_driver(
+            "Crude oil and energy sell-off",
+            "Global crude oil benchmarks tumbled and U.S. inventory builds weighed on energy.",
+            site="reuters.com",  # not one of the real sources, so it cannot be used
+        ),
+        web_driver(
+            "Post-ex-dividend selling pressure",
+            "The stock faced income-focused distribution pressure after its ex-dividend date.",
+            site="marketbeat.com",
+        ),
+    ]
+    result = web_result(monkeypatch, answer=web_reply(drivers=drivers), citations=citations)
+
+    assert [d["title"] for d in result["drivers"]] == [d["title"] for d in drivers]
+    assert result["drivers"][0]["source"]["url"] == "https://vertexaisearch.example/a"
+
+
+def test_web_driver_that_shares_too_few_words_with_a_citation_is_dropped(monkeypatch):
+    citations = [{"text": "Crude oil prices tumbled worldwide.", "urls": ["https://vertexaisearch.example/a"]}]
+    drivers = [
+        web_driver("Crude weakness", "Crude oil prices tumbled."),
+        web_driver("Tariff news", "A new tariff was announced on imports.", site="unknown.com"),
+    ]
+    result = web_result(monkeypatch, answer=web_reply(drivers=drivers), citations=citations)
+
+    # Only one driver has a source, and one driver is not enough to show
+    assert result["drivers"] == []
+
+
+def test_the_exact_citation_beats_a_looser_match(monkeypatch):
+    citations = [
+        {"text": "Crude oil prices tumbled on rising global inventories.", "urls": ["https://vertexaisearch.example/a"]},
+        {"text": "The company raised its yearly forecast.", "urls": ["https://vertexaisearch.example/b"]},
+    ]
+    drivers = [
+        web_driver("Raised forecast", "The company raised its yearly forecast."),
+        web_driver("Crude weakness", "Crude oil prices tumbled on rising global inventories."),
+    ]
+    result = web_result(monkeypatch, answer=web_reply(drivers=drivers), citations=citations)
+
+    assert result["drivers"][0]["source"]["url"] == "https://vertexaisearch.example/b"
+    assert result["drivers"][1]["source"]["url"] == "https://vertexaisearch.example/a"
+
+
+def test_web_driver_without_a_citation_uses_the_site_the_ai_named(monkeypatch):
+    drivers = [
+        web_driver("Raised forecast", "Guidance went up.", site="www.reuters.com"),
+        web_driver("New customer deal", "A deal was signed.", site="cnbc.com"),
+    ]
+    result = web_result(monkeypatch, answer=web_reply(drivers=drivers), citations=[])
+
+    assert result["drivers"][0]["source"]["url"] == "https://vertexaisearch.example/a"
+    assert result["drivers"][1]["source"]["url"] == "https://vertexaisearch.example/b"
+
+
+def test_web_driver_with_no_source_is_dropped(monkeypatch):
+    drivers = [*TWO_DRIVERS, web_driver("Unbacked", "Nobody reported this.", site="unknown.com")]
+    result = web_result(monkeypatch, answer=web_reply(drivers=drivers))
+    assert [d["title"] for d in result["drivers"]] == ["Raised forecast", "New customer deal"]
+
+
+def test_one_web_driver_is_not_enough_to_show(monkeypatch):
+    result = web_result(monkeypatch, answer=web_reply(drivers=TWO_DRIVERS[:1]))
+
+    assert result["status"] == "ok"
+    assert result["drivers"] == []
+    assert result["driversMessage"] == "No key drivers identified"
+
+
+def test_at_most_four_web_drivers_are_kept(monkeypatch):
+    drivers = [web_driver(f"Event {i}", "The company raised its yearly forecast.") for i in range(6)]
+    result = web_result(monkeypatch, answer=web_reply(drivers=drivers))
+    assert len(result["drivers"]) == 4
+
+
+def test_a_plain_text_web_reply_still_gives_a_summary_without_drivers(monkeypatch):
+    result = web_result(monkeypatch, answer=WEB_SUMMARY)
+
+    assert result["status"] == "ok"
+    assert result["summary"] == WEB_SUMMARY
+    assert result["drivers"] == []
+
+
+def test_web_reply_saying_insufficient_in_json_is_not_enough_information(monkeypatch):
+    result = web_result(monkeypatch, answer='{"insufficient": true}')
+    assert result["status"] == "insufficient"
+
+
+def test_web_driver_sources_are_listed_first_and_always_kept(monkeypatch):
+    many = [{"title": f"site{i}.com", "url": f"https://example.com/{i}"} for i in range(7)]
+    citations = [{"text": "The company raised its yearly forecast.", "urls": ["https://example.com/6"]}]
+    drivers = [
+        web_driver(),
+        web_driver("Second", "Another event.", site="site5.com"),
+    ]
+    result = web_result(
+        monkeypatch, answer=web_reply(drivers=drivers), citations=citations, sources=many
+    )
+
+    urls = [s["url"] for s in result["sources"]]
+    assert len(urls) == 5
+    assert urls[:2] == ["https://example.com/6", "https://example.com/5"]
+
+
+def test_web_drivers_are_sent_to_the_screen(client, monkeypatch):
+    setup(
+        monkeypatch,
+        articles=[],
+        ai=FakeAI(
+            web_answer=web_reply(drivers=TWO_DRIVERS),
+            web_sources=WEB_SOURCES,
+            web_citations=CITATIONS,
+        ),
+    )
+    body = client.get("/api/stocks/AAPL/why-moved").json()
+    assert body["origin"] == "web"
+    assert len(body["drivers"]) == 2
+    assert body["drivers"][0]["source"]["url"].startswith("https://")
+
+
+def age_saved_result(symbol, seconds):
+    """Makes the saved result look `seconds` older."""
+    key = f"why:{symbol}"
+    stamp, value = why_service._cache._items[key]
+    why_service._cache._items[key] = (stamp - seconds, value)
+
+
+def test_not_enough_information_is_only_kept_for_five_minutes(monkeypatch):
+    ai = setup(monkeypatch, articles=[])
+    why_service.get_why_it_moved("AAPL")
+    first_calls = len(ai.calls)
+
+    age_saved_result("AAPL", why_service.MISS_TTL_SECONDS - 10)
+    why_service.get_why_it_moved("AAPL")
+    assert len(ai.calls) == first_calls  # still saved
+
+    age_saved_result("AAPL", 20)
+    why_service.get_why_it_moved("AAPL")
+    assert len(ai.calls) > first_calls  # expired, searched again
+
+
+def test_a_good_answer_is_still_kept_for_thirty_minutes(monkeypatch):
+    ai = setup(monkeypatch, articles=[article("Record earnings")])
+    why_service.get_why_it_moved("AAPL")
+
+    age_saved_result("AAPL", why_service.WHY_TTL_SECONDS - 10)
+    why_service.get_why_it_moved("AAPL")
+    assert len(ai.calls) == 1
+
+    age_saved_result("AAPL", 20)
+    why_service.get_why_it_moved("AAPL")
+    assert len(ai.calls) == 2
 
 
 # ---------------- WHY-01 AC 3: caching ----------------
@@ -540,7 +980,43 @@ def test_gemini_returns_reply_and_sources(monkeypatch):
 
     monkeypatch.setattr(gemini, "_post", lambda url, headers, payload: Response("x"))
     result = gemini.generate("system", [{"role": "user", "parts": [{"text": "hi"}]}])
-    assert result == {"reply": "Hello", "sources": [{"title": "A", "url": "https://example.com/a"}]}
+    assert result == {
+        "reply": "Hello",
+        "sources": [{"title": "A", "url": "https://example.com/a"}],
+        "citations": [],
+    }
+
+
+def test_gemini_citations_use_googles_own_source_numbers(monkeypatch):
+    # The first two chunks are the same page, so sources lists three, but the numbering
+    # Google used for the citations still counts every chunk
+    body = {
+        "candidates": [
+            {
+                "content": {"parts": [{"text": "Hello"}]},
+                "groundingMetadata": {
+                    "groundingChunks": [
+                        {"web": {"uri": "https://example.com/a", "title": "a.com"}},
+                        {"web": {"uri": "https://example.com/a", "title": "a.com"}},
+                        {"web": {"uri": "https://example.com/b", "title": "b.com"}},
+                    ],
+                    "groundingSupports": [
+                        {"segment": {"text": "Profit beat forecasts."}, "groundingChunkIndices": [2]},
+                        {"segment": {"text": ""}, "groundingChunkIndices": [0]},
+                        {"segment": {"text": "Bad index."}, "groundingChunkIndices": [9]},
+                    ],
+                },
+            }
+        ]
+    }
+
+    class Response(FakeResponse):
+        def json(self):
+            return body
+
+    monkeypatch.setattr(gemini, "_post", lambda url, headers, payload: Response("x"))
+    result = gemini.generate("system", [{"role": "user", "parts": [{"text": "hi"}]}])
+    assert result["citations"] == [{"text": "Profit beat forecasts.", "urls": ["https://example.com/b"]}]
 
 
 # ---------------- The route ----------------

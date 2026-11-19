@@ -272,7 +272,7 @@
 }
 
 /* ---------- AI summary card on the "Why it moved" tab ---------- */
-.stock__ai {
+.card.stock__ai {
   margin-bottom: 12px;
   padding: 14px;
   background: #f1f4fb;
@@ -308,6 +308,12 @@
   margin: 0;
   font-size: 15px;
   line-height: 1.5;
+}
+
+.stock__ai-note {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--midas-muted);
 }
 
 .stock__ai-muted {

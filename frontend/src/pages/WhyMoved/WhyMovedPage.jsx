@@ -66,6 +66,11 @@ export default function WhyMovedPage() {
         ) : ok ? (
           <>
             <p className="why__summary-text">{result.summary}</p>
+            {result.origin === "web" && (
+              <p className="why__note">
+                Based on recent web coverage found through Google Search.
+              </p>
+            )}
             {compare.length > 0 && (
               <div className="why__compare" aria-label="How the market moved today">
                 <span className="why__compare-label">

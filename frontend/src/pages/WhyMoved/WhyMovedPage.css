@@ -180,6 +180,17 @@
   line-height: 1.5;
 }
 
+.why__note {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--midas-muted, #6b6b6b);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--midas-muted, #6b6b6b);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .why__retry {
   margin-top: 10px;
   padding: 6px 14px;

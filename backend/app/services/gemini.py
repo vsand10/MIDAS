@@ -90,6 +90,7 @@ def generate(
     return {
         "reply": _reply_text(data),
         "sources": _sources(data),
+        "citations": _citations(data)
 }
 
 
@@ -195,3 +196,35 @@ def _sources(data: dict) -> list[dict]:
         )
 
     return sources
+
+def _citations(data: dict) -> list[dict]:
+    """Which web sources back which part of the reply (Google's groundingSupports).
+
+    Each item is {"text": the part of the reply, "urls": the sources that back it}.
+    Google numbers its sources in its own order, so this reads the original list,
+    before _sources() removes duplicates.
+    """
+    candidates = data.get("candidates") or []
+    if not candidates:
+        return []
+    metadata = candidates[0].get("groundingMetadata") or {}
+
+    urls = []
+    for chunk in metadata.get("groundingChunks") or []:
+        web = chunk.get("web") if isinstance(chunk, dict) else None
+        urls.append(str(web.get("uri") or "").strip() if isinstance(web, dict) else "")
+
+    citations = []
+    for support in metadata.get("groundingSupports") or []:
+        if not isinstance(support, dict):
+            continue
+        segment = support.get("segment")
+        text = str(segment.get("text") or "") if isinstance(segment, dict) else ""
+        found = [
+            urls[i]
+            for i in support.get("groundingChunkIndices") or []
+            if isinstance(i, int) and 0 <= i < len(urls) and urls[i]
+        ]
+        if text and found:
+            citations.append({"text": text, "urls": found})
+    return citations

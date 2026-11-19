@@ -137,16 +137,22 @@ class TTLCache:
         self._max_items = max_items
         self._stale_seconds = stale_seconds
 
-    def get_or_fetch(self, key: str, ttl_seconds: float, fetch: Callable[[], Any]) -> Any:
+    def get_or_fetch(
+        self, key: str, ttl_seconds: float | Callable[[Any], float], fetch: Callable[[], Any]
+    ) -> Any:
+        """ttl_seconds can also be a function that picks the time from the saved value."""
         with self._lock:
             hit = self._items.get(key)
-        if hit and time.monotonic() - hit[0] < ttl_seconds:
+        ttl = 0.0
+        if hit:
+            ttl = ttl_seconds(hit[1]) if callable(ttl_seconds) else ttl_seconds
+        if hit and time.monotonic() - hit[0] < ttl:
             return hit[1]
 
         try:
             value = fetch()
         except DataUnavailableError:
-            if hit and time.monotonic() - hit[0] < ttl_seconds + self._stale_seconds:
+            if hit and time.monotonic() - hit[0] < ttl + self._stale_seconds:
                 return hit[1]
             raise
 

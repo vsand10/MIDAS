@@ -196,6 +196,11 @@ function WhyPreview({ symbol, name }) {
         ) : ok ? (
           <>
             <p className="stock__ai-text">{result.summary}</p>
+            {result.origin === "web" && (
+              <p className="stock__ai-note">
+                Based on recent web coverage found through Google Search.
+              </p>
+            )}
             {compare.length > 0 && (
               <div className="stock__ai-compare" aria-label="How the market moved today">
                 <span className="stock__ai-compare-label">
